@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, FlatList, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Settings, Grid2x2 as Grid, BookOpen, Heart, MoreHorizontal, Edit, CheckCircle, LogOut } from 'lucide-react-native';
+import { Settings, Grid2x2 as Grid, BookOpen, Heart, MoreHorizontal, CreditCard as Edit, CheckCircle, LogOut } from 'lucide-react-native';
 import { useAuth } from '@/hooks/useAuth';
 import { useProfile } from '@/hooks/useProfile';
 import { useRecipes } from '@/hooks/useRecipes';
