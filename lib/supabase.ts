@@ -28,11 +28,24 @@ const ExpoSecureStoreAdapter = {
   },
 };
 
-const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!;
+const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
+const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
 
+// Validate environment variables
 if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('Missing Supabase environment variables. Please check your .env file.');
+  console.error('Missing Supabase environment variables. Please check your .env file.');
+  console.error('EXPO_PUBLIC_SUPABASE_URL:', supabaseUrl);
+  console.error('EXPO_PUBLIC_SUPABASE_ANON_KEY:', supabaseAnonKey ? '[SET]' : '[NOT SET]');
+}
+
+// Only create client if we have valid environment variables
+if (!supabaseUrl || !supabaseAnonKey || 
+    supabaseUrl.includes('your-project-id') || 
+    supabaseAnonKey.includes('your-anon-key')) {
+  throw new Error(
+    'Please update your .env file with actual Supabase credentials. ' +
+    'You can find these in your Supabase project settings under API.'
+  );
 }
 
 export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
