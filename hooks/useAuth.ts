@@ -10,6 +10,7 @@ export function useAuth() {
   useEffect(() => {
     // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
+      console.log('Initial session:', session);
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
@@ -19,6 +20,7 @@ export function useAuth() {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
+      console.log('Auth state changed:', _event, session);
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
@@ -29,10 +31,13 @@ export function useAuth() {
 
   const signIn = async (email: string, password: string) => {
     try {
+      console.log('Attempting sign in with:', email);
       const { data, error } = await supabase.auth.signInWithPassword({
         email: email.trim(),
         password,
       });
+      
+      console.log('Sign in result:', { data, error });
       return { data, error };
     } catch (error) {
       console.error('Sign in error:', error);
@@ -42,6 +47,8 @@ export function useAuth() {
 
   const signUp = async (email: string, password: string, username: string, fullName: string) => {
     try {
+      console.log('Attempting sign up with:', email, username);
+      
       // First check if username is already taken
       const { data: existingProfile } = await supabase
         .from('profiles')
@@ -56,12 +63,12 @@ export function useAuth() {
         };
       }
 
-      // Sign up the user with no email confirmation required
+      // Sign up the user with email confirmation disabled
       const { data, error } = await supabase.auth.signUp({
         email: email.trim(),
         password,
         options: {
-          emailRedirectTo: undefined, // No email confirmation
+          emailRedirectTo: undefined,
           data: {
             username,
             full_name: fullName,
@@ -69,12 +76,14 @@ export function useAuth() {
         }
       });
 
+      console.log('Sign up result:', { data, error });
+
       if (error) {
         return { data, error };
       }
 
-      // Create profile immediately after signup
       if (data.user) {
+        // Create profile immediately after signup
         const { error: profileError } = await supabase
           .from('profiles')
           .insert({
@@ -89,7 +98,7 @@ export function useAuth() {
         }
       }
 
-      return { data, error, needsSignIn: !data.session };
+      return { data, error };
     } catch (error) {
       console.error('Sign up error:', error);
       return { data: null, error: { message: 'An unexpected error occurred' } };

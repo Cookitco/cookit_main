@@ -26,6 +26,10 @@ export default function RootLayout() {
     }
   }, [fontsLoaded, fontError]);
 
+  useEffect(() => {
+    console.log('Auth state in layout:', { user: user?.email, loading });
+  }, [user, loading]);
+
   if (!fontsLoaded && !fontError) {
     return null;
   }
@@ -35,9 +39,11 @@ export default function RootLayout() {
   }
 
   if (!user) {
+    console.log('No user, showing auth screen');
     return <AuthScreen />;
   }
 
+  console.log('User authenticated, showing main app');
   return (
     <>
       <Stack screenOptions={{ headerShown: false }}>

@@ -61,8 +61,11 @@ export default function AuthScreen() {
 
     try {
       if (isSignUp) {
-        const { error, needsSignIn } = await signUp(email.trim(), password, username.trim(), fullName.trim());
+        console.log('Signing up user...');
+        const { data, error } = await signUp(email.trim(), password, username.trim(), fullName.trim());
+        
         if (error) {
+          console.log('Signup error:', error);
           if (error.message.includes('already registered') || error.message.includes('User already registered')) {
             setErrors({ email: 'This email is already registered. Please sign in instead.' });
           } else if (error.message.includes('username')) {
@@ -71,27 +74,36 @@ export default function AuthScreen() {
             setErrors({ general: error.message });
           }
         } else {
+          console.log('Signup successful:', data);
           // Success! Switch to sign in mode
-          Alert.alert('Account Created!', 'Your account has been created successfully. Please sign in with your credentials.', [
-            {
-              text: 'OK',
-              onPress: () => {
-                setIsSignUp(false);
-                setPassword('');
-                setUsername('');
-                setFullName('');
-                setErrors({});
+          Alert.alert(
+            'Account Created!', 
+            'Your account has been created successfully. Please sign in with your credentials.',
+            [
+              {
+                text: 'OK',
+                onPress: () => {
+                  setIsSignUp(false);
+                  setPassword('');
+                  setUsername('');
+                  setFullName('');
+                  setErrors({});
+                }
               }
-            }
-          ]);
+            ]
+          );
         }
       } else {
-        const { error } = await signIn(email.trim(), password);
+        console.log('Signing in user...');
+        const { data, error } = await signIn(email.trim(), password);
+        
         if (error) {
           console.log('Sign in error:', error);
           setErrors({ general: 'Invalid email or password. Please check your credentials and try again.' });
+        } else {
+          console.log('Sign in successful:', data);
+          // The auth state change will automatically redirect to home
         }
-        // If successful, the user will be automatically redirected by the auth state change
       }
     } catch (error) {
       console.error('Auth error:', error);
@@ -183,7 +195,7 @@ export default function AuthScreen() {
               <Mail color="#9ca3af" size={20} style={styles.inputIcon} />
               <TextInput
                 style={[styles.input, errors.email && styles.inputError]}
-                placeholder="Email (Gmail, Yahoo, any email works)"
+                placeholder="Any email works (test@gmail.com)"
                 value={email}
                 onChangeText={(text) => {
                   setEmail(text);
