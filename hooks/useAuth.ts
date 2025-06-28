@@ -49,20 +49,9 @@ export function useAuth() {
     try {
       console.log('Attempting sign up with:', email, username);
       
-      // First check if username is already taken
-      const { data: existingProfile } = await supabase
-        .from('profiles')
-        .select('username')
-        .eq('username', username)
-        .single();
-
-      if (existingProfile) {
-        return { 
-          data: null, 
-          error: { message: 'Username is already taken. Please choose a different username.' } 
-        };
-      }
-
+      // Skip username check for now to avoid permission issues
+      // We'll handle duplicate usernames in the profile creation step
+      
       // Sign up the user with email confirmation disabled
       const { data, error } = await supabase.auth.signUp({
         email: email.trim(),
@@ -79,22 +68,40 @@ export function useAuth() {
       console.log('Sign up result:', { data, error });
 
       if (error) {
+        // Handle rate limiting specifically
+        if (error.message.includes('For security purposes')) {
+          return { 
+            data, 
+            error: { message: 'Please wait a moment before trying again. Supabase has rate limiting for security.' } 
+          };
+        }
         return { data, error };
       }
 
       if (data.user) {
         // Create profile immediately after signup
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .insert({
-            id: data.user.id,
-            username,
-            full_name: fullName,
-            bio: 'Welcome to CooKit!',
-          });
+        try {
+          const { error: profileError } = await supabase
+            .from('profiles')
+            .insert({
+              id: data.user.id,
+              username,
+              full_name: fullName,
+              bio: 'Welcome to CooKit!',
+            });
 
-        if (profileError) {
-          console.error('Error creating profile:', profileError);
+          if (profileError) {
+            console.error('Error creating profile:', profileError);
+            // If username already exists, suggest a different one
+            if (profileError.message.includes('duplicate') || profileError.message.includes('unique')) {
+              return { 
+                data: null, 
+                error: { message: `Username "${username}" is already taken. Please choose a different username.` } 
+              };
+            }
+          }
+        } catch (profileError) {
+          console.error('Profile creation error:', profileError);
         }
       }
 

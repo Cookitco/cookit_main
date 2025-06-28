@@ -70,6 +70,8 @@ export default function AuthScreen() {
             setErrors({ email: 'This email is already registered. Please sign in instead.' });
           } else if (error.message.includes('username')) {
             setErrors({ username: error.message });
+          } else if (error.message.includes('rate limiting') || error.message.includes('security purposes')) {
+            setErrors({ general: 'Too many attempts. Please wait a minute before trying again.' });
           } else {
             setErrors({ general: error.message });
           }
@@ -174,7 +176,7 @@ export default function AuthScreen() {
                   <User color="#9ca3af" size={20} style={styles.inputIcon} />
                   <TextInput
                     style={[styles.input, errors.username && styles.inputError]}
-                    placeholder="Username"
+                    placeholder="Username (choose something unique)"
                     value={username}
                     onChangeText={(text) => {
                       setUsername(text);
@@ -240,6 +242,13 @@ export default function AuthScreen() {
               </TouchableOpacity>
             </View>
             {errors.password && <Text style={styles.fieldError}>{errors.password}</Text>}
+
+            {/* Rate Limiting Warning */}
+            <View style={styles.warningContainer}>
+              <Text style={styles.warningText}>
+                💡 If you see "too many requests", please wait 1-2 minutes before trying again
+              </Text>
+            </View>
 
             <TouchableOpacity
               style={[styles.authButton, loading && styles.authButtonDisabled]}
@@ -311,6 +320,20 @@ const styles = StyleSheet.create({
   errorText: {
     color: '#dc2626',
     fontSize: 14,
+    fontFamily: 'Nunito-Regular',
+    textAlign: 'center',
+  },
+  warningContainer: {
+    backgroundColor: '#fffbeb',
+    borderWidth: 1,
+    borderColor: '#fed7aa',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 16,
+  },
+  warningText: {
+    color: '#92400e',
+    fontSize: 12,
     fontFamily: 'Nunito-Regular',
     textAlign: 'center',
   },
