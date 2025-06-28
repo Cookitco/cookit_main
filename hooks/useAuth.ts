@@ -30,7 +30,7 @@ export function useAuth() {
   const signIn = async (email: string, password: string) => {
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
-        email,
+        email: email.trim(),
         password,
       });
       return { data, error };
@@ -56,12 +56,12 @@ export function useAuth() {
         };
       }
 
-      // Sign up the user without email confirmation
+      // Sign up the user with no email confirmation required
       const { data, error } = await supabase.auth.signUp({
-        email,
+        email: email.trim(),
         password,
         options: {
-          emailRedirectTo: undefined, // No email confirmation needed
+          emailRedirectTo: undefined, // No email confirmation
           data: {
             username,
             full_name: fullName,
@@ -73,32 +73,8 @@ export function useAuth() {
         return { data, error };
       }
 
-      if (data.user && !data.session) {
-        // If user is created but no session (email confirmation required), 
-        // we'll create the profile anyway and return success
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .insert({
-            id: data.user.id,
-            username,
-            full_name: fullName,
-            bio: 'Welcome to CooKit!',
-          });
-
-        if (profileError) {
-          console.error('Error creating profile:', profileError);
-        }
-
-        // Return success to redirect to sign-in
-        return { 
-          data, 
-          error: null,
-          needsSignIn: true // Flag to indicate user should sign in
-        };
-      }
-
-      if (data.user && data.session) {
-        // User is immediately signed in, create profile
+      // Create profile immediately after signup
+      if (data.user) {
         const { error: profileError } = await supabase
           .from('profiles')
           .insert({
@@ -113,7 +89,7 @@ export function useAuth() {
         }
       }
 
-      return { data, error };
+      return { data, error, needsSignIn: !data.session };
     } catch (error) {
       console.error('Sign up error:', error);
       return { data: null, error: { message: 'An unexpected error occurred' } };

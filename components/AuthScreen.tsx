@@ -18,14 +18,14 @@ export default function AuthScreen() {
   const validateForm = () => {
     const newErrors: {[key: string]: string} = {};
 
-    // Email validation - removed domain restriction
+    // Very basic email validation - just check if it contains @
     if (!email) {
       newErrors.email = 'Email is required';
-    } else if (!/\S+@\S+\.\S+/.test(email)) {
+    } else if (!email.includes('@')) {
       newErrors.email = 'Please enter a valid email address';
     }
 
-    // Password validation
+    // Basic password validation
     if (!password) {
       newErrors.password = 'Password is required';
     } else if (password.length < 6) {
@@ -38,8 +38,6 @@ export default function AuthScreen() {
         newErrors.username = 'Username is required';
       } else if (username.length < 3) {
         newErrors.username = 'Username must be at least 3 characters';
-      } else if (!/^[a-zA-Z0-9_]+$/.test(username)) {
-        newErrors.username = 'Username can only contain letters, numbers, and underscores';
       }
 
       if (!fullName) {
@@ -63,9 +61,9 @@ export default function AuthScreen() {
 
     try {
       if (isSignUp) {
-        const { error, needsSignIn } = await signUp(email.trim().toLowerCase(), password, username.trim().toLowerCase(), fullName.trim());
+        const { error, needsSignIn } = await signUp(email.trim(), password, username.trim(), fullName.trim());
         if (error) {
-          if (error.message.includes('already registered')) {
+          if (error.message.includes('already registered') || error.message.includes('User already registered')) {
             setErrors({ email: 'This email is already registered. Please sign in instead.' });
           } else if (error.message.includes('username')) {
             setErrors({ username: error.message });
@@ -88,17 +86,15 @@ export default function AuthScreen() {
           ]);
         }
       } else {
-        const { error } = await signIn(email.trim().toLowerCase(), password);
+        const { error } = await signIn(email.trim(), password);
         if (error) {
-          if (error.message.includes('Invalid login credentials')) {
-            setErrors({ general: 'Invalid email or password. Please check your credentials and try again.' });
-          } else {
-            setErrors({ general: error.message });
-          }
+          console.log('Sign in error:', error);
+          setErrors({ general: 'Invalid email or password. Please check your credentials and try again.' });
         }
         // If successful, the user will be automatically redirected by the auth state change
       }
     } catch (error) {
+      console.error('Auth error:', error);
       setErrors({ general: 'An unexpected error occurred. Please try again.' });
     } finally {
       setLoading(false);
@@ -187,7 +183,7 @@ export default function AuthScreen() {
               <Mail color="#9ca3af" size={20} style={styles.inputIcon} />
               <TextInput
                 style={[styles.input, errors.email && styles.inputError]}
-                placeholder="Email (any domain welcome)"
+                placeholder="Email (Gmail, Yahoo, any email works)"
                 value={email}
                 onChangeText={(text) => {
                   setEmail(text);
@@ -207,7 +203,7 @@ export default function AuthScreen() {
               <Lock color="#9ca3af" size={20} style={styles.inputIcon} />
               <TextInput
                 style={[styles.input, styles.passwordInput, errors.password && styles.inputError]}
-                placeholder="Password"
+                placeholder="Password (minimum 6 characters)"
                 value={password}
                 onChangeText={(text) => {
                   setPassword(text);
