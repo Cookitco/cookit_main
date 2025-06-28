@@ -18,14 +18,14 @@ export default function AuthScreen() {
   const validateForm = () => {
     const newErrors: {[key: string]: string} = {};
 
-    // Very basic email validation - just check if it contains @
+    // Email validation - more flexible
     if (!email) {
       newErrors.email = 'Email is required';
-    } else if (!email.includes('@')) {
+    } else if (!email.includes('@') || !email.includes('.')) {
       newErrors.email = 'Please enter a valid email address';
     }
 
-    // Basic password validation
+    // Password validation
     if (!password) {
       newErrors.password = 'Password is required';
     } else if (password.length < 6) {
@@ -38,6 +38,8 @@ export default function AuthScreen() {
         newErrors.username = 'Username is required';
       } else if (username.length < 3) {
         newErrors.username = 'Username must be at least 3 characters';
+      } else if (!/^[a-zA-Z0-9_]+$/.test(username)) {
+        newErrors.username = 'Username can only contain letters, numbers, and underscores';
       }
 
       if (!fullName) {
@@ -62,46 +64,48 @@ export default function AuthScreen() {
     try {
       if (isSignUp) {
         console.log('Signing up user...');
-        const { data, error } = await signUp(email.trim(), password, username.trim(), fullName.trim());
+        const { data, error } = await signUp(email, password, username, fullName);
         
         if (error) {
           console.log('Signup error:', error);
-          if (error.message.includes('already registered') || error.message.includes('User already registered')) {
-            setErrors({ email: 'This email is already registered. Please sign in instead.' });
-          } else if (error.message.includes('username')) {
-            setErrors({ username: error.message });
-          } else if (error.message.includes('rate limiting') || error.message.includes('security purposes')) {
-            setErrors({ general: 'Too many attempts. Please wait a minute before trying again.' });
-          } else {
-            setErrors({ general: error.message });
-          }
+          setErrors({ general: error.message });
         } else {
           console.log('Signup successful:', data);
-          // Success! Switch to sign in mode
-          Alert.alert(
-            'Account Created!', 
-            'Your account has been created successfully. Please sign in with your credentials.',
-            [
-              {
-                text: 'OK',
-                onPress: () => {
-                  setIsSignUp(false);
-                  setPassword('');
-                  setUsername('');
-                  setFullName('');
-                  setErrors({});
+          
+          // Check if user needs to confirm email
+          if (data?.user && !data?.session) {
+            Alert.alert(
+              'Check Your Email', 
+              'We sent you a confirmation link. Please check your email and click the link to activate your account.',
+              [
+                {
+                  text: 'OK',
+                  onPress: () => {
+                    setIsSignUp(false);
+                    setPassword('');
+                    setUsername('');
+                    setFullName('');
+                    setErrors({});
+                  }
                 }
-              }
-            ]
-          );
+              ]
+            );
+          } else {
+            // User is automatically signed in
+            Alert.alert(
+              'Welcome to CooKit!', 
+              'Your account has been created successfully.',
+              [{ text: 'OK' }]
+            );
+          }
         }
       } else {
         console.log('Signing in user...');
-        const { data, error } = await signIn(email.trim(), password);
+        const { data, error } = await signIn(email, password);
         
         if (error) {
           console.log('Sign in error:', error);
-          setErrors({ general: 'Invalid email or password. Please check your credentials and try again.' });
+          setErrors({ general: error.message });
         } else {
           console.log('Sign in successful:', data);
           // The auth state change will automatically redirect to home
@@ -176,7 +180,7 @@ export default function AuthScreen() {
                   <User color="#9ca3af" size={20} style={styles.inputIcon} />
                   <TextInput
                     style={[styles.input, errors.username && styles.inputError]}
-                    placeholder="Username (choose something unique)"
+                    placeholder="Username (letters, numbers, underscore only)"
                     value={username}
                     onChangeText={(text) => {
                       setUsername(text);
@@ -197,7 +201,7 @@ export default function AuthScreen() {
               <Mail color="#9ca3af" size={20} style={styles.inputIcon} />
               <TextInput
                 style={[styles.input, errors.email && styles.inputError]}
-                placeholder="Any email works (test@gmail.com)"
+                placeholder="Email address"
                 value={email}
                 onChangeText={(text) => {
                   setEmail(text);
@@ -243,11 +247,13 @@ export default function AuthScreen() {
             </View>
             {errors.password && <Text style={styles.fieldError}>{errors.password}</Text>}
 
-            {/* Rate Limiting Warning */}
-            <View style={styles.warningContainer}>
-              <Text style={styles.warningText}>
-                💡 If you see "too many requests", please wait 1-2 minutes before trying again
-              </Text>
+            {/* Tips */}
+            <View style={styles.tipsContainer}>
+              <Text style={styles.tipsTitle}>💡 Tips:</Text>
+              <Text style={styles.tipsText}>• Use any valid email format (e.g., user@domain.com)</Text>
+              <Text style={styles.tipsText}>• Password must be at least 6 characters</Text>
+              {isSignUp && <Text style={styles.tipsText}>• Username can only contain letters, numbers, and underscores</Text>}
+              <Text style={styles.tipsText}>• If you see "too many requests", wait 1-2 minutes</Text>
             </View>
 
             <TouchableOpacity
@@ -323,19 +329,25 @@ const styles = StyleSheet.create({
     fontFamily: 'Nunito-Regular',
     textAlign: 'center',
   },
-  warningContainer: {
-    backgroundColor: '#fffbeb',
+  tipsContainer: {
+    backgroundColor: '#f0f9ff',
     borderWidth: 1,
-    borderColor: '#fed7aa',
+    borderColor: '#bae6fd',
     borderRadius: 8,
     padding: 12,
     marginBottom: 16,
   },
-  warningText: {
-    color: '#92400e',
+  tipsTitle: {
+    color: '#0369a1',
+    fontSize: 14,
+    fontFamily: 'Nunito-SemiBold',
+    marginBottom: 4,
+  },
+  tipsText: {
+    color: '#0369a1',
     fontSize: 12,
     fontFamily: 'Nunito-Regular',
-    textAlign: 'center',
+    marginBottom: 2,
   },
   inputContainer: {
     flexDirection: 'row',

@@ -33,15 +33,28 @@ export function useAuth() {
     try {
       console.log('Attempting sign in with:', email);
       const { data, error } = await supabase.auth.signInWithPassword({
-        email: email.trim(),
+        email: email.trim().toLowerCase(),
         password,
       });
       
       console.log('Sign in result:', { data, error });
-      return { data, error };
+      
+      if (error) {
+        // More specific error handling
+        if (error.message.includes('Invalid login credentials')) {
+          return { data, error: { message: 'Invalid email or password. Please check your credentials.' } };
+        } else if (error.message.includes('Email not confirmed')) {
+          return { data, error: { message: 'Please check your email and confirm your account.' } };
+        } else if (error.message.includes('Too many requests')) {
+          return { data, error: { message: 'Too many login attempts. Please wait a moment and try again.' } };
+        }
+        return { data, error };
+      }
+      
+      return { data, error: null };
     } catch (error) {
       console.error('Sign in error:', error);
-      return { data: null, error: { message: 'An unexpected error occurred' } };
+      return { data: null, error: { message: 'An unexpected error occurred. Please try again.' } };
     }
   };
 
@@ -49,18 +62,15 @@ export function useAuth() {
     try {
       console.log('Attempting sign up with:', email, username);
       
-      // Skip username check for now to avoid permission issues
-      // We'll handle duplicate usernames in the profile creation step
-      
-      // Sign up the user with email confirmation disabled
+      // First, sign up the user
       const { data, error } = await supabase.auth.signUp({
-        email: email.trim(),
+        email: email.trim().toLowerCase(),
         password,
         options: {
           emailRedirectTo: undefined,
           data: {
-            username,
-            full_name: fullName,
+            username: username.trim(),
+            full_name: fullName.trim(),
           }
         }
       });
@@ -68,25 +78,41 @@ export function useAuth() {
       console.log('Sign up result:', { data, error });
 
       if (error) {
-        // Handle rate limiting specifically
-        if (error.message.includes('For security purposes')) {
+        // Handle specific signup errors
+        if (error.message.includes('User already registered')) {
           return { 
             data, 
-            error: { message: 'Please wait a moment before trying again. Supabase has rate limiting for security.' } 
+            error: { message: 'This email is already registered. Please sign in instead or use a different email.' } 
+          };
+        } else if (error.message.includes('Password should be at least')) {
+          return { 
+            data, 
+            error: { message: 'Password must be at least 6 characters long.' } 
+          };
+        } else if (error.message.includes('Unable to validate email address')) {
+          return { 
+            data, 
+            error: { message: 'Please enter a valid email address.' } 
+          };
+        } else if (error.message.includes('For security purposes') || error.message.includes('rate limit')) {
+          return { 
+            data, 
+            error: { message: 'Please wait a moment before trying again. Too many requests.' } 
           };
         }
         return { data, error };
       }
 
-      if (data.user) {
-        // Create profile immediately after signup
+      // If signup was successful and we have a user
+      if (data.user && !error) {
         try {
+          // Create profile
           const { error: profileError } = await supabase
             .from('profiles')
             .insert({
               id: data.user.id,
-              username,
-              full_name: fullName,
+              username: username.trim(),
+              full_name: fullName.trim(),
               bio: 'Welcome to CooKit!',
             });
 
@@ -99,22 +125,37 @@ export function useAuth() {
                 error: { message: `Username "${username}" is already taken. Please choose a different username.` } 
               };
             }
+            // Don't fail the entire signup for profile creation errors
+            console.warn('Profile creation failed but signup succeeded');
           }
         } catch (profileError) {
           console.error('Profile creation error:', profileError);
+          // Don't fail the entire signup for profile creation errors
+        }
+
+        // Check if email confirmation is required
+        if (data.user && !data.session) {
+          return { 
+            data, 
+            error: { message: 'Please check your email to confirm your account before signing in.' } 
+          };
         }
       }
 
-      return { data, error };
+      return { data, error: null };
     } catch (error) {
       console.error('Sign up error:', error);
-      return { data: null, error: { message: 'An unexpected error occurred' } };
+      return { data: null, error: { message: 'An unexpected error occurred. Please try again.' } };
     }
   };
 
   const signOut = async () => {
     try {
       const { error } = await supabase.auth.signOut();
+      if (!error) {
+        setSession(null);
+        setUser(null);
+      }
       return { error };
     } catch (error) {
       console.error('Sign out error:', error);
