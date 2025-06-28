@@ -71,33 +71,12 @@ export default function AuthScreen() {
           setErrors({ general: error.message });
         } else {
           console.log('Signup successful:', data);
-          
-          // Check if user needs to confirm email
-          if (data?.user && !data?.session) {
-            Alert.alert(
-              'Check Your Email', 
-              'We sent you a confirmation link. Please check your email and click the link to activate your account.',
-              [
-                {
-                  text: 'OK',
-                  onPress: () => {
-                    setIsSignUp(false);
-                    setPassword('');
-                    setUsername('');
-                    setFullName('');
-                    setErrors({});
-                  }
-                }
-              ]
-            );
-          } else {
-            // User is automatically signed in
-            Alert.alert(
-              'Welcome to CooKit!', 
-              'Your account has been created successfully.',
-              [{ text: 'OK' }]
-            );
-          }
+          // User should be automatically signed in with email confirmation disabled
+          Alert.alert(
+            'Welcome to CooKit!', 
+            'Your account has been created successfully and you are now signed in.',
+            [{ text: 'OK' }]
+          );
         }
       } else {
         console.log('Signing in user...');
@@ -253,6 +232,7 @@ export default function AuthScreen() {
               <Text style={styles.tipsText}>• Use any valid email format (e.g., user@domain.com)</Text>
               <Text style={styles.tipsText}>• Password must be at least 6 characters</Text>
               {isSignUp && <Text style={styles.tipsText}>• Username can only contain letters, numbers, and underscores</Text>}
+              <Text style={styles.tipsText}>• No email confirmation required - instant access!</Text>
               <Text style={styles.tipsText}>• If you see "too many requests", wait 1-2 minutes</Text>
             </View>
 

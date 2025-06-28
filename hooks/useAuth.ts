@@ -62,7 +62,7 @@ export function useAuth() {
     try {
       console.log('Attempting sign up with:', email, username);
       
-      // First, sign up the user
+      // Sign up the user with email confirmation disabled
       const { data, error } = await supabase.auth.signUp({
         email: email.trim().toLowerCase(),
         password,
@@ -106,7 +106,7 @@ export function useAuth() {
       // If signup was successful and we have a user
       if (data.user && !error) {
         try {
-          // Create profile
+          // Create profile immediately
           const { error: profileError } = await supabase
             .from('profiles')
             .insert({
@@ -131,14 +131,6 @@ export function useAuth() {
         } catch (profileError) {
           console.error('Profile creation error:', profileError);
           // Don't fail the entire signup for profile creation errors
-        }
-
-        // Check if email confirmation is required
-        if (data.user && !data.session) {
-          return { 
-            data, 
-            error: { message: 'Please check your email to confirm your account before signing in.' } 
-          };
         }
       }
 
