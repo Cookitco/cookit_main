@@ -28,40 +28,83 @@ export function useAuth() {
   }, []);
 
   const signIn = async (email: string, password: string) => {
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-    return { data, error };
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+      return { data, error };
+    } catch (error) {
+      console.error('Sign in error:', error);
+      return { data: null, error: { message: 'An unexpected error occurred' } };
+    }
   };
 
   const signUp = async (email: string, password: string, username: string, fullName: string) => {
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-    });
-
-    if (data.user && !error) {
-      // Create profile
-      const { error: profileError } = await supabase
+    try {
+      // First check if username is already taken
+      const { data: existingProfile } = await supabase
         .from('profiles')
-        .insert({
-          id: data.user.id,
-          username,
-          full_name: fullName,
-        });
+        .select('username')
+        .eq('username', username)
+        .single();
 
-      if (profileError) {
-        console.error('Error creating profile:', profileError);
+      if (existingProfile) {
+        return { 
+          data: null, 
+          error: { message: 'Username is already taken. Please choose a different username.' } 
+        };
       }
-    }
 
-    return { data, error };
+      // Sign up the user
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            username,
+            full_name: fullName,
+          }
+        }
+      });
+
+      if (error) {
+        return { data, error };
+      }
+
+      if (data.user) {
+        // Create profile immediately after signup
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .insert({
+            id: data.user.id,
+            username,
+            full_name: fullName,
+            bio: 'Welcome to CooKit!',
+          });
+
+        if (profileError) {
+          console.error('Error creating profile:', profileError);
+          // Don't return error here as the user was created successfully
+          // The profile creation can be retried later
+        }
+      }
+
+      return { data, error };
+    } catch (error) {
+      console.error('Sign up error:', error);
+      return { data: null, error: { message: 'An unexpected error occurred' } };
+    }
   };
 
   const signOut = async () => {
-    const { error } = await supabase.auth.signOut();
-    return { error };
+    try {
+      const { error } = await supabase.auth.signOut();
+      return { error };
+    } catch (error) {
+      console.error('Sign out error:', error);
+      return { error: { message: 'An unexpected error occurred' } };
+    }
   };
 
   return {

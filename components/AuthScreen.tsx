@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '@/hooks/useAuth';
-import { ChefHat, Mail, Lock, User } from 'lucide-react-native';
+import { ChefHat, Mail, Lock, User, Eye, EyeOff } from 'lucide-react-native';
 
 export default function AuthScreen() {
   const [isSignUp, setIsSignUp] = useState(false);
@@ -11,126 +11,244 @@ export default function AuthScreen() {
   const [username, setUsername] = useState('');
   const [fullName, setFullName] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [errors, setErrors] = useState<{[key: string]: string}>({});
   const { signIn, signUp } = useAuth();
 
-  const handleAuth = async () => {
-    if (!email || !password) {
-      Alert.alert('Error', 'Please fill in all required fields');
-      return;
+  const validateForm = () => {
+    const newErrors: {[key: string]: string} = {};
+
+    // Email validation
+    if (!email) {
+      newErrors.email = 'Email is required';
+    } else if (!/\S+@\S+\.\S+/.test(email)) {
+      newErrors.email = 'Please enter a valid email address';
     }
 
-    if (isSignUp && (!username || !fullName)) {
-      Alert.alert('Error', 'Please fill in all required fields');
+    // Password validation
+    if (!password) {
+      newErrors.password = 'Password is required';
+    } else if (password.length < 6) {
+      newErrors.password = 'Password must be at least 6 characters';
+    }
+
+    // Sign up specific validations
+    if (isSignUp) {
+      if (!username) {
+        newErrors.username = 'Username is required';
+      } else if (username.length < 3) {
+        newErrors.username = 'Username must be at least 3 characters';
+      } else if (!/^[a-zA-Z0-9_]+$/.test(username)) {
+        newErrors.username = 'Username can only contain letters, numbers, and underscores';
+      }
+
+      if (!fullName) {
+        newErrors.fullName = 'Full name is required';
+      } else if (fullName.length < 2) {
+        newErrors.fullName = 'Full name must be at least 2 characters';
+      }
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleAuth = async () => {
+    if (!validateForm()) {
       return;
     }
 
     setLoading(true);
+    setErrors({});
 
     try {
       if (isSignUp) {
-        const { error } = await signUp(email, password, username, fullName);
+        const { error } = await signUp(email.trim().toLowerCase(), password, username.trim().toLowerCase(), fullName.trim());
         if (error) {
-          Alert.alert('Sign Up Error', error.message);
+          if (error.message.includes('already registered')) {
+            setErrors({ email: 'This email is already registered. Please sign in instead.' });
+          } else if (error.message.includes('username')) {
+            setErrors({ username: error.message });
+          } else {
+            setErrors({ general: error.message });
+          }
         } else {
-          Alert.alert('Success', 'Account created successfully! Please check your email to verify your account.');
+          Alert.alert('Success', 'Account created successfully! You can now sign in.');
+          // Switch to sign in mode
+          setIsSignUp(false);
+          setPassword('');
+          setUsername('');
+          setFullName('');
         }
       } else {
-        const { error } = await signIn(email, password);
+        const { error } = await signIn(email.trim().toLowerCase(), password);
         if (error) {
-          Alert.alert('Sign In Error', error.message);
+          if (error.message.includes('Invalid login credentials')) {
+            setErrors({ general: 'Invalid email or password. Please check your credentials and try again.' });
+          } else if (error.message.includes('Email not confirmed')) {
+            setErrors({ general: 'Please check your email and click the confirmation link before signing in.' });
+          } else {
+            setErrors({ general: error.message });
+          }
         }
       }
     } catch (error) {
-      Alert.alert('Error', 'An unexpected error occurred');
+      setErrors({ general: 'An unexpected error occurred. Please try again.' });
     } finally {
       setLoading(false);
     }
   };
 
+  const switchMode = () => {
+    setIsSignUp(!isSignUp);
+    setErrors({});
+    setPassword('');
+    if (!isSignUp) {
+      setUsername('');
+      setFullName('');
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.content}>
-        {/* Logo */}
-        <View style={styles.logoContainer}>
-          <ChefHat color="#22c55e" size={64} />
-          <Text style={styles.logoText}>CooKit</Text>
-          <Text style={styles.tagline}>Share your culinary journey</Text>
-        </View>
-
-        {/* Form */}
-        <View style={styles.form}>
-          {isSignUp && (
-            <>
-              <View style={styles.inputContainer}>
-                <User color="#9ca3af" size={20} style={styles.inputIcon} />
-                <TextInput
-                  style={styles.input}
-                  placeholder="Full Name"
-                  value={fullName}
-                  onChangeText={setFullName}
-                  placeholderTextColor="#9ca3af"
-                />
-              </View>
-
-              <View style={styles.inputContainer}>
-                <User color="#9ca3af" size={20} style={styles.inputIcon} />
-                <TextInput
-                  style={styles.input}
-                  placeholder="Username"
-                  value={username}
-                  onChangeText={setUsername}
-                  placeholderTextColor="#9ca3af"
-                  autoCapitalize="none"
-                />
-              </View>
-            </>
-          )}
-
-          <View style={styles.inputContainer}>
-            <Mail color="#9ca3af" size={20} style={styles.inputIcon} />
-            <TextInput
-              style={styles.input}
-              placeholder="Email"
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              placeholderTextColor="#9ca3af"
-            />
+      <KeyboardAvoidingView 
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.keyboardView}
+      >
+        <ScrollView 
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          {/* Logo */}
+          <View style={styles.logoContainer}>
+            <ChefHat color="#22c55e" size={64} />
+            <Text style={styles.logoText}>CooKit</Text>
+            <Text style={styles.tagline}>Share your culinary journey</Text>
           </View>
 
-          <View style={styles.inputContainer}>
-            <Lock color="#9ca3af" size={20} style={styles.inputIcon} />
-            <TextInput
-              style={styles.input}
-              placeholder="Password"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-              placeholderTextColor="#9ca3af"
-            />
+          {/* Form */}
+          <View style={styles.form}>
+            {/* General Error */}
+            {errors.general && (
+              <View style={styles.errorContainer}>
+                <Text style={styles.errorText}>{errors.general}</Text>
+              </View>
+            )}
+
+            {isSignUp && (
+              <>
+                <View style={styles.inputContainer}>
+                  <User color="#9ca3af" size={20} style={styles.inputIcon} />
+                  <TextInput
+                    style={[styles.input, errors.fullName && styles.inputError]}
+                    placeholder="Full Name"
+                    value={fullName}
+                    onChangeText={(text) => {
+                      setFullName(text);
+                      if (errors.fullName) {
+                        setErrors(prev => ({ ...prev, fullName: '' }));
+                      }
+                    }}
+                    placeholderTextColor="#9ca3af"
+                    autoCapitalize="words"
+                  />
+                </View>
+                {errors.fullName && <Text style={styles.fieldError}>{errors.fullName}</Text>}
+
+                <View style={styles.inputContainer}>
+                  <User color="#9ca3af" size={20} style={styles.inputIcon} />
+                  <TextInput
+                    style={[styles.input, errors.username && styles.inputError]}
+                    placeholder="Username"
+                    value={username}
+                    onChangeText={(text) => {
+                      setUsername(text);
+                      if (errors.username) {
+                        setErrors(prev => ({ ...prev, username: '' }));
+                      }
+                    }}
+                    placeholderTextColor="#9ca3af"
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                  />
+                </View>
+                {errors.username && <Text style={styles.fieldError}>{errors.username}</Text>}
+              </>
+            )}
+
+            <View style={styles.inputContainer}>
+              <Mail color="#9ca3af" size={20} style={styles.inputIcon} />
+              <TextInput
+                style={[styles.input, errors.email && styles.inputError]}
+                placeholder="Email"
+                value={email}
+                onChangeText={(text) => {
+                  setEmail(text);
+                  if (errors.email) {
+                    setErrors(prev => ({ ...prev, email: '' }));
+                  }
+                }}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoCorrect={false}
+                placeholderTextColor="#9ca3af"
+              />
+            </View>
+            {errors.email && <Text style={styles.fieldError}>{errors.email}</Text>}
+
+            <View style={styles.inputContainer}>
+              <Lock color="#9ca3af" size={20} style={styles.inputIcon} />
+              <TextInput
+                style={[styles.input, styles.passwordInput, errors.password && styles.inputError]}
+                placeholder="Password"
+                value={password}
+                onChangeText={(text) => {
+                  setPassword(text);
+                  if (errors.password) {
+                    setErrors(prev => ({ ...prev, password: '' }));
+                  }
+                }}
+                secureTextEntry={!showPassword}
+                placeholderTextColor="#9ca3af"
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+              <TouchableOpacity
+                style={styles.eyeIcon}
+                onPress={() => setShowPassword(!showPassword)}
+              >
+                {showPassword ? (
+                  <EyeOff color="#9ca3af" size={20} />
+                ) : (
+                  <Eye color="#9ca3af" size={20} />
+                )}
+              </TouchableOpacity>
+            </View>
+            {errors.password && <Text style={styles.fieldError}>{errors.password}</Text>}
+
+            <TouchableOpacity
+              style={[styles.authButton, loading && styles.authButtonDisabled]}
+              onPress={handleAuth}
+              disabled={loading}
+            >
+              <Text style={styles.authButtonText}>
+                {loading ? 'Loading...' : isSignUp ? 'Create Account' : 'Sign In'}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.switchButton}
+              onPress={switchMode}
+              disabled={loading}
+            >
+              <Text style={styles.switchButtonText}>
+                {isSignUp ? 'Already have an account? Sign In' : "Don't have an account? Sign Up"}
+              </Text>
+            </TouchableOpacity>
           </View>
-
-          <TouchableOpacity
-            style={[styles.authButton, loading && styles.authButtonDisabled]}
-            onPress={handleAuth}
-            disabled={loading}
-          >
-            <Text style={styles.authButtonText}>
-              {loading ? 'Loading...' : isSignUp ? 'Sign Up' : 'Sign In'}
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.switchButton}
-            onPress={() => setIsSignUp(!isSignUp)}
-          >
-            <Text style={styles.switchButtonText}>
-              {isSignUp ? 'Already have an account? Sign In' : "Don't have an account? Sign Up"}
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -140,10 +258,14 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#fafafa',
   },
-  content: {
+  keyboardView: {
     flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
     justifyContent: 'center',
     paddingHorizontal: 32,
+    paddingVertical: 20,
   },
   logoContainer: {
     alignItems: 'center',
@@ -164,6 +286,20 @@ const styles = StyleSheet.create({
   form: {
     width: '100%',
   },
+  errorContainer: {
+    backgroundColor: '#fef2f2',
+    borderWidth: 1,
+    borderColor: '#fecaca',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 16,
+  },
+  errorText: {
+    color: '#dc2626',
+    fontSize: 14,
+    fontFamily: 'Nunito-Regular',
+    textAlign: 'center',
+  },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -171,7 +307,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 16,
-    marginBottom: 16,
+    marginBottom: 4,
     borderWidth: 1,
     borderColor: '#e5e7eb',
   },
@@ -183,6 +319,24 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontFamily: 'Nunito-Regular',
     color: '#111827',
+  },
+  passwordInput: {
+    paddingRight: 40,
+  },
+  inputError: {
+    borderColor: '#ef4444',
+  },
+  eyeIcon: {
+    position: 'absolute',
+    right: 16,
+    padding: 4,
+  },
+  fieldError: {
+    color: '#ef4444',
+    fontSize: 12,
+    fontFamily: 'Nunito-Regular',
+    marginBottom: 12,
+    marginLeft: 4,
   },
   authButton: {
     backgroundColor: '#22c55e',
