@@ -1,87 +1,18 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, TextInput, FlatList } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Search, Utensils, Users, CheckCircle } from 'lucide-react-native';
-
-interface Recipe {
-  id: string;
-  name: string;
-  image: string;
-  prepTime: string;
-  isVeg: boolean;
-  category: string;
-}
+import { useRecipes } from '@/hooks/useRecipes';
+import { supabase } from '@/lib/supabase';
 
 interface User {
   id: string;
   username: string;
-  fullName: string;
-  avatar: string;
-  followers: number;
-  isVerified: boolean;
+  full_name: string;
+  avatar_url: string | null;
+  followers_count: number | null;
+  is_verified: boolean | null;
 }
-
-const mockRecipes: Recipe[] = [
-  {
-    id: '1',
-    name: 'Truffle Pasta',
-    image: 'https://images.pexels.com/photos/1640777/pexels-photo-1640777.jpeg?auto=compress&cs=tinysrgb&w=400',
-    prepTime: '30 min',
-    isVeg: true,
-    category: 'dinner',
-  },
-  {
-    id: '2',
-    name: 'Chocolate Croissants',
-    image: 'https://images.pexels.com/photos/1775043/pexels-photo-1775043.jpeg?auto=compress&cs=tinysrgb&w=400',
-    prepTime: '3 days',
-    isVeg: true,
-    category: 'bakery',
-  },
-  {
-    id: '3',
-    name: 'Buddha Bowl',
-    image: 'https://images.pexels.com/photos/1132047/pexels-photo-1132047.jpeg?auto=compress&cs=tinysrgb&w=400',
-    prepTime: '45 min',
-    isVeg: true,
-    category: 'lunch',
-  },
-  {
-    id: '4',
-    name: 'Grilled Salmon',
-    image: 'https://images.pexels.com/photos/1279330/pexels-photo-1279330.jpeg?auto=compress&cs=tinysrgb&w=400',
-    prepTime: '25 min',
-    isVeg: false,
-    category: 'dinner',
-  },
-];
-
-const mockUsers: User[] = [
-  {
-    id: '1',
-    username: 'chef_maria',
-    fullName: 'Maria Rodriguez',
-    avatar: 'https://images.pexels.com/photos/1043471/pexels-photo-1043471.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&fit=crop',
-    followers: 15420,
-    isVerified: true,
-  },
-  {
-    id: '2',
-    username: 'baking_with_tom',
-    fullName: 'Tom Baker',
-    avatar: 'https://images.pexels.com/photos/1040881/pexels-photo-1040881.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&fit=crop',
-    followers: 8930,
-    isVerified: true,
-  },
-  {
-    id: '3',
-    username: 'healthy_eats_sarah',
-    fullName: 'Sarah Johnson',
-    avatar: 'https://images.pexels.com/photos/1181686/pexels-photo-1181686.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&fit=crop',
-    followers: 12500,
-    isVerified: false,
-  },
-];
 
 const categories = ['all', 'breakfast', 'brunch', 'lunch', 'snacks', 'dinner', 'bakery', 'dessert'];
 
@@ -89,27 +20,58 @@ export default function SearchScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState<'recipes' | 'users'>('recipes');
   const [selectedCategory, setSelectedCategory] = useState('all');
+  const [users, setUsers] = useState<User[]>([]);
+  const [loadingUsers, setLoadingUsers] = useState(false);
+  
+  const { recipes, loading: loadingRecipes } = useRecipes();
 
-  const filteredRecipes = mockRecipes.filter(recipe =>
+  useEffect(() => {
+    if (activeTab === 'users') {
+      fetchUsers();
+    }
+  }, [activeTab, searchQuery]);
+
+  const fetchUsers = async () => {
+    setLoadingUsers(true);
+    try {
+      let query = supabase
+        .from('profiles')
+        .select('*')
+        .order('followers_count', { ascending: false });
+
+      if (searchQuery) {
+        query = query.or(`username.ilike.%${searchQuery}%,full_name.ilike.%${searchQuery}%`);
+      }
+
+      const { data, error } = await query.limit(20);
+
+      if (error) {
+        console.error('Error fetching users:', error);
+      } else {
+        setUsers(data || []);
+      }
+    } catch (error) {
+      console.error('Error fetching users:', error);
+    } finally {
+      setLoadingUsers(false);
+    }
+  };
+
+  const filteredRecipes = recipes.filter(recipe =>
     recipe.name.toLowerCase().includes(searchQuery.toLowerCase()) &&
     (selectedCategory === 'all' || recipe.category === selectedCategory)
   );
 
-  const filteredUsers = mockUsers.filter(user =>
-    user.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    user.fullName.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
-  const renderRecipe = ({ item }: { item: Recipe }) => (
+  const renderRecipe = ({ item }: { item: any }) => (
     <TouchableOpacity style={styles.recipeCard}>
-      <Image source={{ uri: item.image }} style={styles.recipeImage} />
+      <Image source={{ uri: item.image_url }} style={styles.recipeImage} />
       <View style={styles.recipeInfo}>
         <Text style={styles.recipeName} numberOfLines={1}>{item.name}</Text>
         <View style={styles.recipeDetails}>
-          <Text style={styles.prepTime}>{item.prepTime}</Text>
-          <View style={[styles.vegBadge, { backgroundColor: item.isVeg ? '#dcfce7' : '#fef2f2' }]}>
-            <Text style={[styles.vegText, { color: item.isVeg ? '#16a34a' : '#dc2626' }]}>
-              {item.isVeg ? 'Veg' : 'Non-Veg'}
+          <Text style={styles.prepTime}>{item.prep_time}</Text>
+          <View style={[styles.vegBadge, { backgroundColor: item.is_veg ? '#dcfce7' : '#fef2f2' }]}>
+            <Text style={[styles.vegText, { color: item.is_veg ? '#16a34a' : '#dc2626' }]}>
+              {item.is_veg ? 'Veg' : 'Non-Veg'}
             </Text>
           </View>
         </View>
@@ -119,16 +81,21 @@ export default function SearchScreen() {
 
   const renderUser = ({ item }: { item: User }) => (
     <TouchableOpacity style={styles.userCard}>
-      <Image source={{ uri: item.avatar }} style={styles.userAvatar} />
+      <Image 
+        source={{ 
+          uri: item.avatar_url || 'https://images.pexels.com/photos/1043471/pexels-photo-1043471.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&fit=crop' 
+        }} 
+        style={styles.userAvatar} 
+      />
       <View style={styles.userInfo}>
         <View style={styles.userNameContainer}>
           <Text style={styles.userUsername}>{item.username}</Text>
-          {item.isVerified && (
+          {item.is_verified && (
             <CheckCircle color="#22c55e" size={16} fill="#22c55e" />
           )}
         </View>
-        <Text style={styles.userFullName}>{item.fullName}</Text>
-        <Text style={styles.userFollowers}>{item.followers.toLocaleString()} followers</Text>
+        <Text style={styles.userFullName}>{item.full_name}</Text>
+        <Text style={styles.userFollowers}>{item.followers_count || 0} followers</Text>
       </View>
       <TouchableOpacity style={styles.followButton}>
         <Text style={styles.followButtonText}>Follow</Text>
@@ -203,23 +170,39 @@ export default function SearchScreen() {
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {activeTab === 'recipes' ? (
           <View style={styles.recipesGrid}>
-            <FlatList
-              data={filteredRecipes}
-              renderItem={renderRecipe}
-              keyExtractor={(item) => item.id}
-              numColumns={2}
-              scrollEnabled={false}
-              columnWrapperStyle={styles.recipeRow}
-            />
+            {filteredRecipes.length > 0 ? (
+              <FlatList
+                data={filteredRecipes}
+                renderItem={renderRecipe}
+                keyExtractor={(item) => item.id}
+                numColumns={2}
+                scrollEnabled={false}
+                columnWrapperStyle={styles.recipeRow}
+              />
+            ) : (
+              <View style={styles.emptyState}>
+                <Utensils color="#9ca3af" size={48} />
+                <Text style={styles.emptyStateTitle}>No recipes found</Text>
+                <Text style={styles.emptyStateDescription}>Try adjusting your search or category</Text>
+              </View>
+            )}
           </View>
         ) : (
           <View style={styles.usersList}>
-            <FlatList
-              data={filteredUsers}
-              renderItem={renderUser}
-              keyExtractor={(item) => item.id}
-              scrollEnabled={false}
-            />
+            {users.length > 0 ? (
+              <FlatList
+                data={users}
+                renderItem={renderUser}
+                keyExtractor={(item) => item.id}
+                scrollEnabled={false}
+              />
+            ) : (
+              <View style={styles.emptyState}>
+                <Users color="#9ca3af" size={48} />
+                <Text style={styles.emptyStateTitle}>No users found</Text>
+                <Text style={styles.emptyStateDescription}>Try adjusting your search</Text>
+              </View>
+            )}
           </View>
         )}
       </ScrollView>
@@ -420,5 +403,22 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: 'Nunito-SemiBold',
     color: 'white',
+  },
+  emptyState: {
+    alignItems: 'center',
+    paddingVertical: 48,
+  },
+  emptyStateTitle: {
+    fontSize: 18,
+    fontFamily: 'Nunito-SemiBold',
+    color: '#111827',
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  emptyStateDescription: {
+    fontSize: 14,
+    fontFamily: 'Nunito-Regular',
+    color: '#6b7280',
+    textAlign: 'center',
   },
 });

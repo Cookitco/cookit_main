@@ -1,9 +1,16 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Image } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Image, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Camera, Plus, X, Save, Clock, Users } from 'lucide-react-native';
+import { useAuth } from '@/hooks/useAuth';
+import { useRecipes } from '@/hooks/useRecipes';
+import { usePosts } from '@/hooks/usePosts';
 
 export default function CreateScreen() {
+  const { user } = useAuth();
+  const { createRecipe } = useRecipes();
+  const { createPost } = usePosts();
+  
   const [activeTab, setActiveTab] = useState<'recipe' | 'post'>('recipe');
   const [recipeName, setRecipeName] = useState('');
   const [description, setDescription] = useState('');
@@ -14,6 +21,10 @@ export default function CreateScreen() {
   const [isVeg, setIsVeg] = useState(true);
   const [category, setCategory] = useState('dinner');
   const [isPrivate, setIsPrivate] = useState(false);
+  const [imageUrl, setImageUrl] = useState('');
+  const [postCaption, setPostCaption] = useState('');
+  const [postImageUrl, setPostImageUrl] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const categories = ['breakfast', 'brunch', 'lunch', 'snacks', 'dinner', 'bakery', 'dessert'];
 
@@ -49,18 +60,86 @@ export default function CreateScreen() {
     setDirections(newDirections);
   };
 
-  const handleSave = () => {
-    console.log('Saving recipe:', {
-      recipeName,
+  const handleSaveRecipe = async () => {
+    if (!user || !recipeName || !description || !imageUrl) {
+      Alert.alert('Error', 'Please fill in all required fields');
+      return;
+    }
+
+    const filteredIngredients = ingredients.filter(ingredient => ingredient.trim() !== '');
+    const filteredDirections = directions.filter(direction => direction.trim() !== '');
+
+    if (filteredIngredients.length === 0 || filteredDirections.length === 0) {
+      Alert.alert('Error', 'Please add at least one ingredient and one direction');
+      return;
+    }
+
+    setLoading(true);
+
+    const { error } = await createRecipe({
+      user_id: user.id,
+      name: recipeName,
       description,
-      ingredients,
-      directions,
-      prepTime,
-      calories,
-      isVeg,
+      image_url: imageUrl,
+      ingredients: filteredIngredients,
+      directions: filteredDirections,
+      prep_time: prepTime,
+      calories: calories ? parseInt(calories) : null,
+      is_veg: isVeg,
       category,
-      isPrivate,
+      is_private: isPrivate,
     });
+
+    setLoading(false);
+
+    if (error) {
+      Alert.alert('Error', 'Failed to create recipe');
+    } else {
+      Alert.alert('Success', 'Recipe created successfully!');
+      // Reset form
+      setRecipeName('');
+      setDescription('');
+      setIngredients(['']);
+      setDirections(['']);
+      setPrepTime('');
+      setCalories('');
+      setImageUrl('');
+    }
+  };
+
+  const handleSavePost = async () => {
+    if (!user || !postImageUrl) {
+      Alert.alert('Error', 'Please add an image for your post');
+      return;
+    }
+
+    setLoading(true);
+
+    const { error } = await createPost({
+      user_id: user.id,
+      type: 'image',
+      media_url: postImageUrl,
+      caption: postCaption,
+    });
+
+    setLoading(false);
+
+    if (error) {
+      Alert.alert('Error', 'Failed to create post');
+    } else {
+      Alert.alert('Success', 'Post created successfully!');
+      // Reset form
+      setPostCaption('');
+      setPostImageUrl('');
+    }
+  };
+
+  const handleSave = () => {
+    if (activeTab === 'recipe') {
+      handleSaveRecipe();
+    } else {
+      handleSavePost();
+    }
   };
 
   return (
@@ -68,8 +147,15 @@ export default function CreateScreen() {
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.title}>Create</Text>
-        <TouchableOpacity onPress={handleSave} style={styles.saveButton}>
+        <TouchableOpacity 
+          onPress={handleSave} 
+          style={[styles.saveButton, loading && styles.saveButtonDisabled]}
+          disabled={loading}
+        >
           <Save color="white" size={20} />
+          <Text style={styles.saveButtonText}>
+            {loading ? 'Saving...' : 'Save'}
+          </Text>
         </TouchableOpacity>
       </View>
 
@@ -96,13 +182,24 @@ export default function CreateScreen() {
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {activeTab === 'recipe' ? (
           <View style={styles.recipeForm}>
-            {/* Photo Upload */}
+            {/* Photo URL */}
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Recipe Photo</Text>
-              <TouchableOpacity style={styles.photoUpload}>
-                <Camera color="#9ca3af" size={48} />
-                <Text style={styles.photoUploadText}>Tap to add photo</Text>
-              </TouchableOpacity>
+              <Text style={styles.sectionTitle}>Recipe Photo URL</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Enter image URL (e.g., from Pexels)"
+                value={imageUrl}
+                onChangeText={setImageUrl}
+                placeholderTextColor="#9ca3af"
+              />
+              {imageUrl ? (
+                <Image source={{ uri: imageUrl }} style={styles.previewImage} />
+              ) : (
+                <View style={styles.photoPlaceholder}>
+                  <Camera color="#9ca3af" size={48} />
+                  <Text style={styles.photoPlaceholderText}>Image preview will appear here</Text>
+                </View>
+              )}
             </View>
 
             {/* Basic Info */}
@@ -284,13 +381,26 @@ export default function CreateScreen() {
           <View style={styles.postForm}>
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Create Post</Text>
-              <TouchableOpacity style={styles.photoUpload}>
-                <Camera color="#9ca3af" size={48} />
-                <Text style={styles.photoUploadText}>Tap to add photo or video</Text>
-              </TouchableOpacity>
+              <TextInput
+                style={styles.input}
+                placeholder="Enter image URL (e.g., from Pexels)"
+                value={postImageUrl}
+                onChangeText={setPostImageUrl}
+                placeholderTextColor="#9ca3af"
+              />
+              {postImageUrl ? (
+                <Image source={{ uri: postImageUrl }} style={styles.previewImage} />
+              ) : (
+                <View style={styles.photoPlaceholder}>
+                  <Camera color="#9ca3af" size={48} />
+                  <Text style={styles.photoPlaceholderText}>Image preview will appear here</Text>
+                </View>
+              )}
               <TextInput
                 style={[styles.input, styles.textArea]}
                 placeholder="Write a caption..."
+                value={postCaption}
+                onChangeText={setPostCaption}
                 multiline
                 numberOfLines={4}
                 placeholderTextColor="#9ca3af"
@@ -330,6 +440,14 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     flexDirection: 'row',
     alignItems: 'center',
+  },
+  saveButtonDisabled: {
+    opacity: 0.6,
+  },
+  saveButtonText: {
+    color: 'white',
+    fontFamily: 'Nunito-SemiBold',
+    marginLeft: 4,
   },
   tabContainer: {
     flexDirection: 'row',
@@ -379,7 +497,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 12,
   },
-  photoUpload: {
+  previewImage: {
+    width: '100%',
+    height: 200,
+    borderRadius: 12,
+    marginTop: 12,
+  },
+  photoPlaceholder: {
     backgroundColor: 'white',
     borderWidth: 2,
     borderColor: '#e5e7eb',
@@ -388,8 +512,9 @@ const styles = StyleSheet.create({
     padding: 32,
     alignItems: 'center',
     justifyContent: 'center',
+    marginTop: 12,
   },
-  photoUploadText: {
+  photoPlaceholderText: {
     fontSize: 16,
     fontFamily: 'Nunito-Regular',
     color: '#9ca3af',

@@ -1,80 +1,50 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, FlatList } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, FlatList, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Settings, Grid2x2 as Grid, BookOpen, Heart, MoreHorizontal, CreditCard as Edit, CheckCircle } from 'lucide-react-native';
-
-interface Recipe {
-  id: string;
-  name: string;
-  image: string;
-  likes: number;
-  saves: number;
-}
-
-const mockUser = {
-  username: 'chef_maria',
-  fullName: 'Maria Rodriguez',
-  avatar: 'https://images.pexels.com/photos/1043471/pexels-photo-1043471.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&fit=crop',
-  bio: '👩‍🍳 Professional Chef | Italian Cuisine Expert | Food Photography',
-  posts: 248,
-  followers: 15420,
-  following: 890,
-  isVerified: true,
-};
-
-const mockPosts = Array.from({ length: 12 }, (_, index) => ({
-  id: `${index + 1}`,
-  image: `https://images.pexels.com/photos/${1640777 + index}/pexels-photo-${1640777 + index}.jpeg?auto=compress&cs=tinysrgb&w=300`,
-}));
-
-const mockRecipes: Recipe[] = [
-  {
-    id: '1',
-    name: 'Truffle Pasta',
-    image: 'https://images.pexels.com/photos/1640777/pexels-photo-1640777.jpeg?auto=compress&cs=tinysrgb&w=400',
-    likes: 45,
-    saves: 23,
-  },
-  {
-    id: '2',
-    name: 'Chocolate Croissants',
-    image: 'https://images.pexels.com/photos/1775043/pexels-photo-1775043.jpeg?auto=compress&cs=tinysrgb&w=400',
-    likes: 78,
-    saves: 45,
-  },
-  {
-    id: '3',
-    name: 'Buddha Bowl',
-    image: 'https://images.pexels.com/photos/1132047/pexels-photo-1132047.jpeg?auto=compress&cs=tinysrgb&w=400',
-    likes: 92,
-    saves: 67,
-  },
-  {
-    id: '4',
-    name: 'Grilled Salmon',
-    image: 'https://images.pexels.com/photos/1279330/pexels-photo-1279330.jpeg?auto=compress&cs=tinysrgb&w=400',
-    likes: 56,
-    saves: 34,
-  },
-];
+import { Settings, Grid2x2 as Grid, BookOpen, Heart, MoreHorizontal, Edit, CheckCircle, LogOut } from 'lucide-react-native';
+import { useAuth } from '@/hooks/useAuth';
+import { useProfile } from '@/hooks/useProfile';
+import { useRecipes } from '@/hooks/useRecipes';
+import { usePosts } from '@/hooks/usePosts';
 
 export default function ProfileScreen() {
+  const { user, signOut } = useAuth();
+  const { profile } = useProfile(user?.id);
+  const { recipes } = useRecipes(user?.id);
+  const { posts } = usePosts(user?.id);
   const [activeTab, setActiveTab] = useState<'posts' | 'recipes' | 'saved'>('posts');
+
+  const handleSignOut = async () => {
+    Alert.alert(
+      'Sign Out',
+      'Are you sure you want to sign out?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Sign Out', 
+          style: 'destructive',
+          onPress: async () => {
+            await signOut();
+          }
+        },
+      ]
+    );
+  };
 
   const renderPost = ({ item }: { item: any }) => (
     <TouchableOpacity style={styles.postItem}>
-      <Image source={{ uri: item.image }} style={styles.postImage} />
+      <Image source={{ uri: item.media_url }} style={styles.postImage} />
     </TouchableOpacity>
   );
 
-  const renderRecipe = ({ item }: { item: Recipe }) => (
+  const renderRecipe = ({ item }: { item: any }) => (
     <TouchableOpacity style={styles.recipeCard}>
-      <Image source={{ uri: item.image }} style={styles.recipeImage} />
+      <Image source={{ uri: item.image_url }} style={styles.recipeImage} />
       <View style={styles.recipeInfo}>
         <Text style={styles.recipeName} numberOfLines={1}>{item.name}</Text>
         <View style={styles.recipeStats}>
-          <Text style={styles.recipeStatText}>❤️ {item.likes}</Text>
-          <Text style={styles.recipeStatText}>📌 {item.saves}</Text>
+          <Text style={styles.recipeStatText}>❤️ {item.likes_count || 0}</Text>
+          <Text style={styles.recipeStatText}>📌 {item.saves_count || 0}</Text>
         </View>
       </View>
     </TouchableOpacity>
@@ -92,13 +62,13 @@ export default function ProfileScreen() {
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.username}>{mockUser.username}</Text>
+        <Text style={styles.username}>{profile?.username || 'Loading...'}</Text>
         <View style={styles.headerActions}>
           <TouchableOpacity style={styles.headerButton}>
             <Settings color="#374151" size={24} />
           </TouchableOpacity>
-          <TouchableOpacity style={styles.headerButton}>
-            <MoreHorizontal color="#374151" size={24} />
+          <TouchableOpacity style={styles.headerButton} onPress={handleSignOut}>
+            <LogOut color="#374151" size={24} />
           </TouchableOpacity>
         </View>
       </View>
@@ -107,18 +77,23 @@ export default function ProfileScreen() {
         {/* Profile Info */}
         <View style={styles.profileSection}>
           <View style={styles.profileHeader}>
-            <Image source={{ uri: mockUser.avatar }} style={styles.profileAvatar} />
+            <Image 
+              source={{ 
+                uri: profile?.avatar_url || 'https://images.pexels.com/photos/1043471/pexels-photo-1043471.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&fit=crop' 
+              }} 
+              style={styles.profileAvatar} 
+            />
             <View style={styles.statsContainer}>
               <View style={styles.statItem}>
-                <Text style={styles.statNumber}>{mockUser.posts}</Text>
+                <Text style={styles.statNumber}>{posts.length}</Text>
                 <Text style={styles.statLabel}>Posts</Text>
               </View>
               <View style={styles.statItem}>
-                <Text style={styles.statNumber}>{mockUser.followers.toLocaleString()}</Text>
+                <Text style={styles.statNumber}>{profile?.followers_count || 0}</Text>
                 <Text style={styles.statLabel}>Followers</Text>
               </View>
               <View style={styles.statItem}>
-                <Text style={styles.statNumber}>{mockUser.following}</Text>
+                <Text style={styles.statNumber}>{profile?.following_count || 0}</Text>
                 <Text style={styles.statLabel}>Following</Text>
               </View>
             </View>
@@ -126,12 +101,12 @@ export default function ProfileScreen() {
 
           <View style={styles.profileInfo}>
             <View style={styles.nameContainer}>
-              <Text style={styles.fullName}>{mockUser.fullName}</Text>
-              {mockUser.isVerified && (
+              <Text style={styles.fullName}>{profile?.full_name || 'User'}</Text>
+              {profile?.is_verified && (
                 <CheckCircle color="#22c55e" size={16} fill="#22c55e" />
               )}
             </View>
-            <Text style={styles.bio}>{mockUser.bio}</Text>
+            <Text style={styles.bio}>{profile?.bio || 'Welcome to CooKit!'}</Text>
           </View>
 
           <TouchableOpacity style={styles.editButton}>
@@ -174,25 +149,41 @@ export default function ProfileScreen() {
         {/* Content */}
         <View style={styles.tabContent}>
           {activeTab === 'posts' && (
-            <FlatList
-              data={mockPosts}
-              renderItem={renderPost}
-              keyExtractor={(item) => item.id}
-              numColumns={3}
-              scrollEnabled={false}
-              columnWrapperStyle={styles.postRow}
-            />
+            posts.length > 0 ? (
+              <FlatList
+                data={posts}
+                renderItem={renderPost}
+                keyExtractor={(item) => item.id}
+                numColumns={3}
+                scrollEnabled={false}
+                columnWrapperStyle={styles.postRow}
+              />
+            ) : (
+              <View style={styles.emptyState}>
+                <Grid color="#9ca3af" size={48} />
+                <Text style={styles.emptyStateTitle}>No posts yet</Text>
+                <Text style={styles.emptyStateDescription}>Share your first cooking moment!</Text>
+              </View>
+            )
           )}
           
           {activeTab === 'recipes' && (
-            <FlatList
-              data={mockRecipes}
-              renderItem={renderRecipe}
-              keyExtractor={(item) => item.id}
-              numColumns={2}
-              scrollEnabled={false}
-              columnWrapperStyle={styles.recipeRow}
-            />
+            recipes.length > 0 ? (
+              <FlatList
+                data={recipes}
+                renderItem={renderRecipe}
+                keyExtractor={(item) => item.id}
+                numColumns={2}
+                scrollEnabled={false}
+                columnWrapperStyle={styles.recipeRow}
+              />
+            ) : (
+              <View style={styles.emptyState}>
+                <BookOpen color="#9ca3af" size={48} />
+                <Text style={styles.emptyStateTitle}>No recipes yet</Text>
+                <Text style={styles.emptyStateDescription}>Create your first recipe!</Text>
+              </View>
+            )
           )}
           
           {activeTab === 'saved' && renderSavedContent()}

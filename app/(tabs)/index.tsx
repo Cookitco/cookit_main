@@ -1,63 +1,9 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, FlatList } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, FlatList, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MessageCircle, Heart, MessageSquare, Send, Bookmark, MoreHorizontal, CheckCircle } from 'lucide-react-native';
-
-interface Post {
-  id: string;
-  user: {
-    username: string;
-    avatar: string;
-    isVerified: boolean;
-  };
-  image: string;
-  caption: string;
-  likes: number;
-  comments: number;
-  timeAgo: string;
-}
-
-const mockPosts: Post[] = [
-  {
-    id: '1',
-    user: {
-      username: 'chef_maria',
-      avatar: 'https://images.pexels.com/photos/1043471/pexels-photo-1043471.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&fit=crop',
-      isVerified: true,
-    },
-    image: 'https://images.pexels.com/photos/1640777/pexels-photo-1640777.jpeg?auto=compress&cs=tinysrgb&w=800',
-    caption: 'Homemade pasta with truffle cream sauce 🍝✨ The secret is in the fresh pasta dough and the perfect balance of cream and truffle oil.',
-    likes: 342,
-    comments: 28,
-    timeAgo: '2h',
-  },
-  {
-    id: '2',
-    user: {
-      username: 'baking_with_tom',
-      avatar: 'https://images.pexels.com/photos/1040881/pexels-photo-1040881.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&fit=crop',
-      isVerified: true,
-    },
-    image: 'https://images.pexels.com/photos/1775043/pexels-photo-1775043.jpeg?auto=compress&cs=tinysrgb&w=800',
-    caption: 'Making croissants from scratch! 🥐 This 3-day process is worth every minute. Swipe to see the layers!',
-    likes: 189,
-    comments: 15,
-    timeAgo: '4h',
-  },
-  {
-    id: '3',
-    user: {
-      username: 'healthy_eats_sarah',
-      avatar: 'https://images.pexels.com/photos/1181686/pexels-photo-1181686.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&fit=crop',
-      isVerified: false,
-    },
-    image: 'https://images.pexels.com/photos/1132047/pexels-photo-1132047.jpeg?auto=compress&cs=tinysrgb&w=800',
-    caption: 'Rainbow Buddha bowl with quinoa, roasted vegetables, and tahini dressing 🌈 Perfect meal prep option!',
-    likes: 267,
-    comments: 22,
-    timeAgo: '6h',
-  },
-];
+import { usePosts } from '@/hooks/usePosts';
+import { useAuth } from '@/hooks/useAuth';
 
 const stories = [
   { id: '1', username: 'Your Story', avatar: 'https://images.pexels.com/photos/1043471/pexels-photo-1043471.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&fit=crop', isOwn: true },
@@ -68,17 +14,44 @@ const stories = [
 
 export default function HomeScreen() {
   const [activeTab, setActiveTab] = useState<'posts' | 'videos'>('posts');
+  const { posts, loading, likePost, refetch } = usePosts();
+  const { user } = useAuth();
 
-  const renderPost = ({ item }: { item: Post }) => (
+  const handleLike = async (postId: string) => {
+    if (user) {
+      await likePost(postId, user.id);
+    }
+  };
+
+  const formatTimeAgo = (dateString: string | null) => {
+    if (!dateString) return 'now';
+    
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60));
+    
+    if (diffInMinutes < 60) {
+      return `${diffInMinutes}m`;
+    } else if (diffInMinutes < 1440) {
+      return `${Math.floor(diffInMinutes / 60)}h`;
+    } else {
+      return `${Math.floor(diffInMinutes / 1440)}d`;
+    }
+  };
+
+  const renderPost = ({ item }: { item: any }) => (
     <View style={styles.postContainer}>
       {/* Post Header */}
       <View style={styles.postHeader}>
         <View style={styles.userInfo}>
-          <Image source={{ uri: item.user.avatar }} style={styles.userAvatar} />
+          <Image 
+            source={{ uri: item.profiles?.avatar_url || 'https://images.pexels.com/photos/1043471/pexels-photo-1043471.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&fit=crop' }} 
+            style={styles.userAvatar} 
+          />
           <View style={styles.userDetails}>
             <View style={styles.usernameContainer}>
-              <Text style={styles.username}>{item.user.username}</Text>
-              {item.user.isVerified && (
+              <Text style={styles.username}>{item.profiles?.username || 'Unknown User'}</Text>
+              {item.profiles?.is_verified && (
                 <CheckCircle color="#22c55e" size={16} fill="#22c55e" />
               )}
             </View>
@@ -90,12 +63,12 @@ export default function HomeScreen() {
       </View>
 
       {/* Post Image */}
-      <Image source={{ uri: item.image }} style={styles.postImage} />
+      <Image source={{ uri: item.media_url }} style={styles.postImage} />
 
       {/* Post Actions */}
       <View style={styles.postActions}>
         <View style={styles.leftActions}>
-          <TouchableOpacity style={styles.actionButton}>
+          <TouchableOpacity style={styles.actionButton} onPress={() => handleLike(item.id)}>
             <Heart color="#374151" size={24} />
           </TouchableOpacity>
           <TouchableOpacity style={styles.actionButton}>
@@ -112,17 +85,19 @@ export default function HomeScreen() {
 
       {/* Post Info */}
       <View style={styles.postInfo}>
-        <Text style={styles.likesText}>{item.likes.toLocaleString()} likes</Text>
-        <View style={styles.captionContainer}>
-          <Text style={styles.captionUsername}>{item.user.username}</Text>
-          <Text style={styles.captionText}> {item.caption}</Text>
-        </View>
-        {item.comments > 0 && (
+        <Text style={styles.likesText}>{item.likes_count || 0} likes</Text>
+        {item.caption && (
+          <View style={styles.captionContainer}>
+            <Text style={styles.captionUsername}>{item.profiles?.username || 'Unknown User'}</Text>
+            <Text style={styles.captionText}> {item.caption}</Text>
+          </View>
+        )}
+        {(item.comments_count || 0) > 0 && (
           <TouchableOpacity>
-            <Text style={styles.commentsText}>View all {item.comments} comments</Text>
+            <Text style={styles.commentsText}>View all {item.comments_count} comments</Text>
           </TouchableOpacity>
         )}
-        <Text style={styles.timeText}>{item.timeAgo} ago</Text>
+        <Text style={styles.timeText}>{formatTimeAgo(item.created_at)} ago</Text>
       </View>
     </View>
   );
@@ -173,7 +148,13 @@ export default function HomeScreen() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        style={styles.content} 
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={loading} onRefresh={refetch} />
+        }
+      >
         {/* Stories */}
         <View style={styles.storiesSection}>
           <FlatList
@@ -187,12 +168,18 @@ export default function HomeScreen() {
         </View>
 
         {/* Posts */}
-        <FlatList
-          data={mockPosts}
-          renderItem={renderPost}
-          keyExtractor={(item) => item.id}
-          scrollEnabled={false}
-        />
+        {posts.length > 0 ? (
+          <FlatList
+            data={posts}
+            renderItem={renderPost}
+            keyExtractor={(item) => item.id}
+            scrollEnabled={false}
+          />
+        ) : (
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyStateText}>No posts yet. Create your first post!</Text>
+          </View>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -389,5 +376,15 @@ const styles = StyleSheet.create({
     fontFamily: 'Nunito-Regular',
     color: '#9ca3af',
     textTransform: 'uppercase',
+  },
+  emptyState: {
+    padding: 32,
+    alignItems: 'center',
+  },
+  emptyStateText: {
+    fontSize: 16,
+    fontFamily: 'Nunito-Regular',
+    color: '#6b7280',
+    textAlign: 'center',
   },
 });
