@@ -56,11 +56,12 @@ export function useAuth() {
         };
       }
 
-      // Sign up the user
+      // Sign up the user without email confirmation
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
+          emailRedirectTo: undefined, // No email confirmation needed
           data: {
             username,
             full_name: fullName,
@@ -72,8 +73,9 @@ export function useAuth() {
         return { data, error };
       }
 
-      if (data.user) {
-        // Create profile immediately after signup
+      if (data.user && !data.session) {
+        // If user is created but no session (email confirmation required), 
+        // we'll create the profile anyway and return success
         const { error: profileError } = await supabase
           .from('profiles')
           .insert({
@@ -85,8 +87,29 @@ export function useAuth() {
 
         if (profileError) {
           console.error('Error creating profile:', profileError);
-          // Don't return error here as the user was created successfully
-          // The profile creation can be retried later
+        }
+
+        // Return success to redirect to sign-in
+        return { 
+          data, 
+          error: null,
+          needsSignIn: true // Flag to indicate user should sign in
+        };
+      }
+
+      if (data.user && data.session) {
+        // User is immediately signed in, create profile
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .insert({
+            id: data.user.id,
+            username,
+            full_name: fullName,
+            bio: 'Welcome to CooKit!',
+          });
+
+        if (profileError) {
+          console.error('Error creating profile:', profileError);
         }
       }
 

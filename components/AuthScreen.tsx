@@ -18,7 +18,7 @@ export default function AuthScreen() {
   const validateForm = () => {
     const newErrors: {[key: string]: string} = {};
 
-    // Email validation
+    // Email validation - removed domain restriction
     if (!email) {
       newErrors.email = 'Email is required';
     } else if (!/\S+@\S+\.\S+/.test(email)) {
@@ -63,7 +63,7 @@ export default function AuthScreen() {
 
     try {
       if (isSignUp) {
-        const { error } = await signUp(email.trim().toLowerCase(), password, username.trim().toLowerCase(), fullName.trim());
+        const { error, needsSignIn } = await signUp(email.trim().toLowerCase(), password, username.trim().toLowerCase(), fullName.trim());
         if (error) {
           if (error.message.includes('already registered')) {
             setErrors({ email: 'This email is already registered. Please sign in instead.' });
@@ -73,24 +73,30 @@ export default function AuthScreen() {
             setErrors({ general: error.message });
           }
         } else {
-          Alert.alert('Success', 'Account created successfully! You can now sign in.');
-          // Switch to sign in mode
-          setIsSignUp(false);
-          setPassword('');
-          setUsername('');
-          setFullName('');
+          // Success! Switch to sign in mode
+          Alert.alert('Account Created!', 'Your account has been created successfully. Please sign in with your credentials.', [
+            {
+              text: 'OK',
+              onPress: () => {
+                setIsSignUp(false);
+                setPassword('');
+                setUsername('');
+                setFullName('');
+                setErrors({});
+              }
+            }
+          ]);
         }
       } else {
         const { error } = await signIn(email.trim().toLowerCase(), password);
         if (error) {
           if (error.message.includes('Invalid login credentials')) {
             setErrors({ general: 'Invalid email or password. Please check your credentials and try again.' });
-          } else if (error.message.includes('Email not confirmed')) {
-            setErrors({ general: 'Please check your email and click the confirmation link before signing in.' });
           } else {
             setErrors({ general: error.message });
           }
         }
+        // If successful, the user will be automatically redirected by the auth state change
       }
     } catch (error) {
       setErrors({ general: 'An unexpected error occurred. Please try again.' });
@@ -181,7 +187,7 @@ export default function AuthScreen() {
               <Mail color="#9ca3af" size={20} style={styles.inputIcon} />
               <TextInput
                 style={[styles.input, errors.email && styles.inputError]}
-                placeholder="Email"
+                placeholder="Email (any domain welcome)"
                 value={email}
                 onChangeText={(text) => {
                   setEmail(text);
