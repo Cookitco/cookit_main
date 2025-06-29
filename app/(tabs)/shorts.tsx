@@ -1,9 +1,9 @@
 import React, { useState, useRef } from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity, FlatList, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Heart, MessageCircle, Send, Bookmark, MoreVertical, Volume2, VolumeX, CheckCircle } from 'lucide-react-native';
+import { Heart, MessageCircle, Send, Bookmark, MoreVertical, Volume2, VolumeX, CheckCircle, Play } from 'lucide-react-native';
 
-const { height: screenHeight } = Dimensions.get('window');
+const { height: screenHeight, width: screenWidth } = Dimensions.get('window');
 
 interface Short {
   id: string;
@@ -17,6 +17,8 @@ interface Short {
   likes: number;
   comments: number;
   music: string;
+  isLiked?: boolean;
+  isSaved?: boolean;
 }
 
 const mockShorts: Short[] = [
@@ -27,7 +29,7 @@ const mockShorts: Short[] = [
       avatar: 'https://images.pexels.com/photos/1043471/pexels-photo-1043471.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&fit=crop',
       isVerified: true,
     },
-    video: 'https://images.pexels.com/photos/1640777/pexels-photo-1640777.jpeg?auto=compress&cs=tinysrgb&w=400&h=800',
+    video: 'https://images.pexels.com/photos/1640777/pexels-photo-1640777.jpeg?auto=compress&cs=tinysrgb&w=400&h=800&fit=crop',
     caption: 'Quick pasta hack that will blow your mind! 🍝✨ #pasta #cooking #foodhack',
     likes: 12400,
     comments: 89,
@@ -40,7 +42,7 @@ const mockShorts: Short[] = [
       avatar: 'https://images.pexels.com/photos/1040881/pexels-photo-1040881.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&fit=crop',
       isVerified: true,
     },
-    video: 'https://images.pexels.com/photos/1775043/pexels-photo-1775043.jpeg?auto=compress&cs=tinysrgb&w=400&h=800',
+    video: 'https://images.pexels.com/photos/1775043/pexels-photo-1775043.jpeg?auto=compress&cs=tinysrgb&w=400&h=800&fit=crop',
     caption: 'Perfect croissant layers every time! 🥐 The secret is in the temperature #baking #croissant',
     likes: 8900,
     comments: 156,
@@ -53,11 +55,37 @@ const mockShorts: Short[] = [
       avatar: 'https://images.pexels.com/photos/1181686/pexels-photo-1181686.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&fit=crop',
       isVerified: false,
     },
-    video: 'https://images.pexels.com/photos/1132047/pexels-photo-1132047.jpeg?auto=compress&cs=tinysrgb&w=400&h=800',
+    video: 'https://images.pexels.com/photos/1132047/pexels-photo-1132047.jpeg?auto=compress&cs=tinysrgb&w=400&h=800&fit=crop',
     caption: '5-minute healthy breakfast bowl 🌈 Perfect for busy mornings! #healthy #breakfast #quickrecipe',
     likes: 15600,
     comments: 234,
     music: 'Upbeat Cooking Music',
+  },
+  {
+    id: '4',
+    user: {
+      username: 'spice_master',
+      avatar: 'https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&fit=crop',
+      isVerified: true,
+    },
+    video: 'https://images.pexels.com/photos/1633578/pexels-photo-1633578.jpeg?auto=compress&cs=tinysrgb&w=400&h=800&fit=crop',
+    caption: 'Secret spice blend that changes everything! 🌶️ Save this recipe! #spices #cooking #secret',
+    likes: 9800,
+    comments: 67,
+    music: 'Cooking Vibes',
+  },
+  {
+    id: '5',
+    user: {
+      username: 'dessert_queen',
+      avatar: 'https://images.pexels.com/photos/1181424/pexels-photo-1181424.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&fit=crop',
+      isVerified: false,
+    },
+    video: 'https://images.pexels.com/photos/1126728/pexels-photo-1126728.jpeg?auto=compress&cs=tinysrgb&w=400&h=800&fit=crop',
+    caption: 'No-bake chocolate cake in 10 minutes! 🍰 Who needs an oven? #dessert #nobake #chocolate',
+    likes: 18200,
+    comments: 312,
+    music: 'Sweet Dreams',
   },
 ];
 
@@ -88,6 +116,15 @@ export default function ShortsScreen() {
     setSavedShorts(newSavedShorts);
   };
 
+  const formatNumber = (num: number) => {
+    if (num >= 1000000) {
+      return (num / 1000000).toFixed(1) + 'M';
+    } else if (num >= 1000) {
+      return (num / 1000).toFixed(1) + 'K';
+    }
+    return num.toString();
+  };
+
   const renderShort = ({ item }: { item: Short }) => {
     const isLiked = likedShorts.has(item.id);
     const isSaved = savedShorts.has(item.id);
@@ -97,8 +134,16 @@ export default function ShortsScreen() {
         {/* Background Video/Image */}
         <Image source={{ uri: item.video }} style={styles.backgroundVideo} />
         
-        {/* Gradient Overlay */}
-        <View style={styles.gradientOverlay} />
+        {/* Play Button Overlay */}
+        <View style={styles.playOverlay}>
+          <TouchableOpacity style={styles.playButton}>
+            <Play color="white" size={32} fill="white" />
+          </TouchableOpacity>
+        </View>
+        
+        {/* Gradient Overlays */}
+        <View style={styles.topGradient} />
+        <View style={styles.bottomGradient} />
 
         {/* Volume Control */}
         <TouchableOpacity
@@ -112,9 +157,9 @@ export default function ShortsScreen() {
           )}
         </TouchableOpacity>
 
-        {/* Content */}
+        {/* Content Container */}
         <View style={styles.contentContainer}>
-          {/* User Info and Caption */}
+          {/* Left Content - User Info and Caption */}
           <View style={styles.leftContent}>
             <View style={styles.userInfo}>
               <Image source={{ uri: item.user.avatar }} style={styles.userAvatar} />
@@ -138,7 +183,7 @@ export default function ShortsScreen() {
             </View>
           </View>
 
-          {/* Action Buttons */}
+          {/* Right Actions */}
           <View style={styles.rightActions}>
             <TouchableOpacity
               style={styles.actionButton}
@@ -146,13 +191,13 @@ export default function ShortsScreen() {
             >
               <View style={[styles.actionIconContainer, isLiked && styles.likedContainer]}>
                 <Heart
-                  color={isLiked ? "white" : "white"}
+                  color="white"
                   size={28}
                   fill={isLiked ? "white" : "none"}
                 />
               </View>
               <Text style={styles.actionText}>
-                {(item.likes + (isLiked ? 1 : 0)).toLocaleString()}
+                {formatNumber(item.likes + (isLiked ? 1 : 0))}
               </Text>
             </TouchableOpacity>
 
@@ -160,7 +205,7 @@ export default function ShortsScreen() {
               <View style={styles.actionIconContainer}>
                 <MessageCircle color="white" size={28} />
               </View>
-              <Text style={styles.actionText}>{item.comments}</Text>
+              <Text style={styles.actionText}>{formatNumber(item.comments)}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.actionButton}>
@@ -176,7 +221,7 @@ export default function ShortsScreen() {
             >
               <View style={[styles.actionIconContainer, isSaved && styles.savedContainer]}>
                 <Bookmark
-                  color={isSaved ? "white" : "white"}
+                  color="white"
                   size={28}
                   fill={isSaved ? "white" : "none"}
                 />
@@ -216,6 +261,10 @@ export default function ShortsScreen() {
           offset: screenHeight * index,
           index,
         })}
+        removeClippedSubviews={true}
+        maxToRenderPerBatch={3}
+        windowSize={5}
+        initialNumToRender={2}
       />
     </View>
   );
@@ -228,20 +277,54 @@ const styles = StyleSheet.create({
   },
   shortContainer: {
     height: screenHeight,
+    width: screenWidth,
     position: 'relative',
   },
   backgroundVideo: {
     width: '100%',
     height: '100%',
     position: 'absolute',
+    resizeMode: 'cover',
   },
-  gradientOverlay: {
+  playOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1,
+  },
+  playButton: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: 'white',
+  },
+  topGradient: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 100,
+    background: 'linear-gradient(180deg, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0) 100%)',
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    zIndex: 2,
+  },
+  bottomGradient: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    height: '50%',
-    backgroundColor: 'rgba(0,0,0,0.7)',
+    height: 200,
+    background: 'linear-gradient(0deg, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0) 100%)',
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    zIndex: 2,
   },
   volumeButton: {
     position: 'absolute',
@@ -250,9 +333,10 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: 'rgba(0,0,0,0.3)',
+    backgroundColor: 'rgba(0,0,0,0.4)',
     justifyContent: 'center',
     alignItems: 'center',
+    zIndex: 3,
   },
   contentContainer: {
     position: 'absolute',
@@ -261,6 +345,7 @@ const styles = StyleSheet.create({
     right: 0,
     flexDirection: 'row',
     paddingHorizontal: 16,
+    zIndex: 3,
   },
   leftContent: {
     flex: 1,
