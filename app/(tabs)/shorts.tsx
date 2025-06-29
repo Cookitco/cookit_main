@@ -1,7 +1,9 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity, FlatList, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Heart, MessageCircle, Send, Bookmark, MoreVertical, Volume2, VolumeX, CheckCircle, Play } from 'lucide-react-native';
+import { useFocusEffect } from 'expo-router';
+import { useCallback } from 'react';
 
 const { height: screenHeight, width: screenWidth } = Dimensions.get('window');
 
@@ -92,9 +94,20 @@ const mockShorts: Short[] = [
 export default function ShortsScreen() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isMuted, setIsMuted] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(false);
   const [likedShorts, setLikedShorts] = useState<Set<string>>(new Set());
   const [savedShorts, setSavedShorts] = useState<Set<string>>(new Set());
   const flatListRef = useRef<FlatList>(null);
+
+  // Auto-play when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      setIsPlaying(true);
+      return () => {
+        setIsPlaying(false);
+      };
+    }, [])
+  );
 
   const handleLike = (shortId: string) => {
     const newLikedShorts = new Set(likedShorts);
@@ -116,6 +129,10 @@ export default function ShortsScreen() {
     setSavedShorts(newSavedShorts);
   };
 
+  const togglePlayPause = () => {
+    setIsPlaying(!isPlaying);
+  };
+
   const formatNumber = (num: number) => {
     if (num >= 1000000) {
       return (num / 1000000).toFixed(1) + 'M';
@@ -125,21 +142,31 @@ export default function ShortsScreen() {
     return num.toString();
   };
 
-  const renderShort = ({ item }: { item: Short }) => {
+  const renderShort = ({ item, index }: { item: Short; index: number }) => {
     const isLiked = likedShorts.has(item.id);
     const isSaved = savedShorts.has(item.id);
+    const isCurrentVideo = index === currentIndex;
 
     return (
       <View style={styles.shortContainer}>
         {/* Background Video/Image */}
         <Image source={{ uri: item.video }} style={styles.backgroundVideo} />
         
-        {/* Play Button Overlay */}
-        <View style={styles.playOverlay}>
-          <TouchableOpacity style={styles.playButton}>
-            <Play color="white" size={32} fill="white" />
+        {/* Play/Pause Overlay - only show when paused */}
+        {(!isPlaying || !isCurrentVideo) && (
+          <TouchableOpacity style={styles.playOverlay} onPress={togglePlayPause}>
+            <View style={styles.playButton}>
+              <Play color="white" size={32} fill="white" />
+            </View>
           </TouchableOpacity>
-        </View>
+        )}
+        
+        {/* Tap to pause/play */}
+        <TouchableOpacity 
+          style={styles.tapArea} 
+          onPress={togglePlayPause}
+          activeOpacity={1}
+        />
         
         {/* Gradient Overlays */}
         <View style={styles.topGradient} />
@@ -255,6 +282,8 @@ export default function ShortsScreen() {
         onMomentumScrollEnd={(event) => {
           const index = Math.round(event.nativeEvent.contentOffset.y / screenHeight);
           setCurrentIndex(index);
+          // Auto-play when new video comes into view
+          setIsPlaying(true);
         }}
         getItemLayout={(data, index) => ({
           length: screenHeight,
@@ -286,6 +315,14 @@ const styles = StyleSheet.create({
     position: 'absolute',
     resizeMode: 'cover',
   },
+  tapArea: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 1,
+  },
   playOverlay: {
     position: 'absolute',
     top: 0,
@@ -294,13 +331,13 @@ const styles = StyleSheet.create({
     bottom: 0,
     justifyContent: 'center',
     alignItems: 'center',
-    zIndex: 1,
+    zIndex: 2,
   },
   playButton: {
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: 'rgba(0,0,0,0.3)',
+    backgroundColor: 'rgba(0,0,0,0.4)',
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
@@ -311,39 +348,39 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
-    height: 100,
-    backgroundColor: 'rgba(0,0,0,0.3)',
-    zIndex: 2,
+    height: 120,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    zIndex: 3,
   },
   bottomGradient: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    height: 200,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    zIndex: 2,
+    height: 250,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    zIndex: 3,
   },
   volumeButton: {
     position: 'absolute',
-    top: 60,
+    top: 50,
     right: 16,
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: 'rgba(0,0,0,0.4)',
+    backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'center',
     alignItems: 'center',
-    zIndex: 3,
+    zIndex: 4,
   },
   contentContainer: {
     position: 'absolute',
-    bottom: 100,
+    bottom: 90,
     left: 0,
     right: 0,
     flexDirection: 'row',
     paddingHorizontal: 16,
-    zIndex: 3,
+    zIndex: 4,
   },
   leftContent: {
     flex: 1,
