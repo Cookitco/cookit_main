@@ -28,11 +28,32 @@ const ExpoSecureStoreAdapter = {
   },
 };
 
-const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!;
+// Get environment variables
+const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
+const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
+
+// More detailed error checking
+if (!supabaseUrl) {
+  console.error('Missing EXPO_PUBLIC_SUPABASE_URL in environment variables');
+  console.log('Available env vars:', Object.keys(process.env).filter(key => key.startsWith('EXPO_PUBLIC')));
+}
+
+if (!supabaseAnonKey) {
+  console.error('Missing EXPO_PUBLIC_SUPABASE_ANON_KEY in environment variables');
+  console.log('Available env vars:', Object.keys(process.env).filter(key => key.startsWith('EXPO_PUBLIC')));
+}
+
+// Check if we have placeholder values
+if (supabaseUrl && (supabaseUrl.includes('your_supabase') || supabaseUrl === 'your_supabase_project_url')) {
+  throw new Error('Please update your .env file with actual Supabase credentials. You can find these in your Supabase project settings under API.');
+}
+
+if (supabaseAnonKey && (supabaseAnonKey.includes('your_supabase') || supabaseAnonKey === 'your_supabase_anon_key')) {
+  throw new Error('Please update your .env file with actual Supabase credentials. You can find these in your Supabase project settings under API.');
+}
 
 if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('Missing Supabase environment variables. Please check your .env file.');
+  throw new Error('Missing Supabase environment variables. Please check your .env file and ensure EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY are set.');
 }
 
 export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
