@@ -1,18 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { router, useFocusEffect } from 'expo-router';
+import { router } from 'expo-router';
 import CreateModal from '@/components/CreateModal';
 
 export default function CreateScreen() {
-  const [modalVisible, setModalVisible] = useState(false);
-
-  // Show modal when this tab is focused
-  useFocusEffect(
-    React.useCallback(() => {
-      setModalVisible(true);
-    }, [])
-  );
+  const [modalVisible, setModalVisible] = useState(true);
 
   const handleSelectType = (type: 'recipe' | 'post' | 'video' | 'short') => {
     setModalVisible(false);
@@ -36,8 +29,8 @@ export default function CreateScreen() {
 
   const handleCloseModal = () => {
     setModalVisible(false);
-    // Navigate back to home tab
-    router.replace('/(tabs)');
+    // Navigate back to previous tab
+    router.back();
   };
 
   return (
