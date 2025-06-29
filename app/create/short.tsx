@@ -39,7 +39,7 @@ export default function CreateShortScreen() {
       Alert.alert('Error', 'Failed to create short video');
     } else {
       Alert.alert('Success', 'Short video created successfully!', [
-        { text: 'OK', onPress: () => router.back() }
+        { text: 'OK', onPress: () => router.replace('/(tabs)') }
       ]);
     }
   };

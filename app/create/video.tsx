@@ -38,7 +38,7 @@ export default function CreateVideoScreen() {
       Alert.alert('Error', 'Failed to create video');
     } else {
       Alert.alert('Success', 'Video uploaded successfully!', [
-        { text: 'OK', onPress: () => router.back() }
+        { text: 'OK', onPress: () => router.replace('/(tabs)') }
       ]);
     }
   };

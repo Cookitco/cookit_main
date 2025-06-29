@@ -45,8 +45,8 @@ export default function CreateModal({ visible, onClose, onSelectType }: CreateMo
   ];
 
   const handleSelectOption = (type: 'recipe' | 'post' | 'video' | 'short') => {
+    console.log('Selected option:', type);
     onSelectType(type);
-    onClose();
   };
 
   return (

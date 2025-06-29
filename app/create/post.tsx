@@ -35,7 +35,7 @@ export default function CreatePostScreen() {
       Alert.alert('Error', 'Failed to create post');
     } else {
       Alert.alert('Success', 'Post created successfully!', [
-        { text: 'OK', onPress: () => router.back() }
+        { text: 'OK', onPress: () => router.replace('/(tabs)') }
       ]);
     }
   };
