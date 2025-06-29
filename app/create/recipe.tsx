@@ -92,7 +92,7 @@ export default function CreateRecipeScreen() {
       Alert.alert('Error', 'Failed to create recipe');
     } else {
       Alert.alert('Success', 'Recipe created successfully!', [
-        { text: 'OK', onPress: () => router.back() }
+        { text: 'OK', onPress: () => router.replace('/(tabs)') }
       ]);
     }
   };
@@ -101,7 +101,7 @@ export default function CreateRecipeScreen() {
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+        <TouchableOpacity onPress={() => router.replace('/(tabs)')} style={styles.backButton}>
           <ArrowLeft color="#374151" size={24} />
         </TouchableOpacity>
         <Text style={styles.title}>Create Recipe</Text>
