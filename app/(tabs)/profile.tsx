@@ -6,13 +6,21 @@ import { useAuth } from '@/hooks/useAuth';
 import { useProfile } from '@/hooks/useProfile';
 import { useRecipes } from '@/hooks/useRecipes';
 import { usePosts } from '@/hooks/usePosts';
+import { useSaves } from '@/hooks/useSaves';
+import PostModal from '@/components/PostModal';
+import RecipeModal from '@/components/RecipeModal';
 
 export default function ProfileScreen() {
   const { user, signOut } = useAuth();
   const { profile } = useProfile(user?.id);
-  const { recipes } = useRecipes(user?.id);
-  const { posts } = usePosts(user?.id);
+  const { recipes, likeRecipe, saveRecipe, deleteRecipe } = useRecipes(user?.id);
+  const { posts, likePost, deletePost } = usePosts(user?.id);
+  const { savedRecipes } = useSaves(user?.id);
   const [activeTab, setActiveTab] = useState<'posts' | 'recipes' | 'saved'>('posts');
+  const [selectedPost, setSelectedPost] = useState<any>(null);
+  const [selectedRecipe, setSelectedRecipe] = useState<any>(null);
+  const [postModalVisible, setPostModalVisible] = useState(false);
+  const [recipeModalVisible, setRecipeModalVisible] = useState(false);
 
   const handleSignOut = async () => {
     Alert.alert(
@@ -31,8 +39,44 @@ export default function ProfileScreen() {
     );
   };
 
+  const handlePostPress = (post: any) => {
+    setSelectedPost(post);
+    setPostModalVisible(true);
+  };
+
+  const handleRecipePress = (recipe: any) => {
+    setSelectedRecipe(recipe);
+    setRecipeModalVisible(true);
+  };
+
+  const handleLikePost = async (postId: string) => {
+    if (user) {
+      await likePost(postId, user.id);
+    }
+  };
+
+  const handleLikeRecipe = async (recipeId: string) => {
+    if (user) {
+      await likeRecipe(recipeId, user.id);
+    }
+  };
+
+  const handleSaveRecipe = async (recipeId: string) => {
+    if (user) {
+      await saveRecipe(recipeId, user.id);
+    }
+  };
+
+  const handleDeletePost = async (postId: string) => {
+    await deletePost(postId);
+  };
+
+  const handleDeleteRecipe = async (recipeId: string) => {
+    await deleteRecipe(recipeId);
+  };
+
   const renderPost = ({ item }: { item: any }) => (
-    <TouchableOpacity style={styles.postItem}>
+    <TouchableOpacity style={styles.postItem} onPress={() => handlePostPress(item)}>
       <Image source={{ uri: item.media_url }} style={styles.postImage} />
       {(item.type === 'video' || item.type === 'short') && (
         <View style={styles.postPlayOverlay}>
@@ -43,7 +87,7 @@ export default function ProfileScreen() {
   );
 
   const renderRecipe = ({ item }: { item: any }) => (
-    <TouchableOpacity style={styles.recipeCard}>
+    <TouchableOpacity style={styles.recipeCard} onPress={() => handleRecipePress(item)}>
       <Image source={{ uri: item.image_url }} style={styles.recipeImage} />
       <View style={styles.recipeInfo}>
         <Text style={styles.recipeName} numberOfLines={1}>{item.name}</Text>
@@ -63,13 +107,42 @@ export default function ProfileScreen() {
     </TouchableOpacity>
   );
 
-  const renderSavedContent = () => (
-    <View style={styles.emptyState}>
-      <Heart color="#9ca3af" size={48} />
-      <Text style={styles.emptyStateTitle}>No saved recipes yet</Text>
-      <Text style={styles.emptyStateDescription}>Recipes you save will appear here</Text>
-    </View>
+  const renderSavedRecipe = ({ item }: { item: any }) => (
+    <TouchableOpacity style={styles.recipeCard} onPress={() => handleRecipePress(item.recipes)}>
+      <Image source={{ uri: item.recipes.image_url }} style={styles.recipeImage} />
+      <View style={styles.recipeInfo}>
+        <Text style={styles.recipeName} numberOfLines={1}>{item.recipes.name}</Text>
+        <Text style={styles.recipeAuthor}>by @{item.recipes.profiles.username}</Text>
+        <View style={styles.recipeStats}>
+          <Text style={styles.recipeStatText}>❤️ {item.recipes.likes_count || 0}</Text>
+          <Text style={styles.recipeStatText}>📌 {item.recipes.saves_count || 0}</Text>
+        </View>
+      </View>
+    </TouchableOpacity>
   );
+
+  const renderSavedContent = () => {
+    if (savedRecipes.length > 0) {
+      return (
+        <FlatList
+          data={savedRecipes}
+          renderItem={renderSavedRecipe}
+          keyExtractor={(item) => item.id}
+          numColumns={2}
+          scrollEnabled={false}
+          columnWrapperStyle={styles.recipeRow}
+        />
+      );
+    }
+
+    return (
+      <View style={styles.emptyState}>
+        <Heart color="#9ca3af" size={48} />
+        <Text style={styles.emptyStateTitle}>No saved recipes yet</Text>
+        <Text style={styles.emptyStateDescription}>Recipes you save will appear here</Text>
+      </View>
+    );
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -205,6 +278,24 @@ export default function ProfileScreen() {
           {activeTab === 'saved' && renderSavedContent()}
         </View>
       </ScrollView>
+
+      {/* Modals */}
+      <PostModal
+        visible={postModalVisible}
+        onClose={() => setPostModalVisible(false)}
+        post={selectedPost}
+        onLike={handleLikePost}
+        onDelete={handleDeletePost}
+      />
+
+      <RecipeModal
+        visible={recipeModalVisible}
+        onClose={() => setRecipeModalVisible(false)}
+        recipe={selectedRecipe}
+        onLike={handleLikeRecipe}
+        onSave={handleSaveRecipe}
+        onDelete={user?.id === selectedRecipe?.user_id ? handleDeleteRecipe : undefined}
+      />
     </SafeAreaView>
   );
 }
@@ -389,6 +480,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: 'Nunito-SemiBold',
     color: '#111827',
+    marginBottom: 8,
+  },
+  recipeAuthor: {
+    fontSize: 12,
+    fontFamily: 'Nunito-Regular',
+    color: '#6b7280',
     marginBottom: 8,
   },
   recipeStats: {

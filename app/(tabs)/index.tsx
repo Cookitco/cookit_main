@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { MessageCircle, Heart, MessageSquare, Send, Bookmark, MoreHorizontal, CheckCircle, Play } from 'lucide-react-native';
 import { usePosts } from '@/hooks/usePosts';
 import { useAuth } from '@/hooks/useAuth';
+import PostModal from '@/components/PostModal';
 
 const stories = [
   { id: '1', username: 'Your Story', avatar: 'https://images.pexels.com/photos/1043471/pexels-photo-1043471.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&fit=crop', isOwn: true },
@@ -14,13 +15,24 @@ const stories = [
 
 export default function HomeScreen() {
   const [activeTab, setActiveTab] = useState<'posts' | 'videos'>('posts');
-  const { posts, loading, likePost, refetch } = usePosts();
+  const [selectedPost, setSelectedPost] = useState<any>(null);
+  const [postModalVisible, setPostModalVisible] = useState(false);
+  const { posts, loading, likePost, deletePost, refetch } = usePosts();
   const { user } = useAuth();
 
   const handleLike = async (postId: string) => {
     if (user) {
       await likePost(postId, user.id);
     }
+  };
+
+  const handlePostPress = (post: any) => {
+    setSelectedPost(post);
+    setPostModalVisible(true);
+  };
+
+  const handleDeletePost = async (postId: string) => {
+    await deletePost(postId);
   };
 
   const formatTimeAgo = (dateString: string | null) => {
@@ -48,7 +60,7 @@ export default function HomeScreen() {
   });
 
   const renderPost = ({ item }: { item: any }) => (
-    <View style={styles.postContainer}>
+    <TouchableOpacity style={styles.postContainer} onPress={() => handlePostPress(item)}>
       {/* Post Header */}
       <View style={styles.postHeader}>
         <View style={styles.userInfo}>
@@ -96,7 +108,7 @@ export default function HomeScreen() {
           <TouchableOpacity style={styles.actionButton} onPress={() => handleLike(item.id)}>
             <Heart color="#374151" size={24} />
           </TouchableOpacity>
-          <TouchableOpacity style={styles.actionButton}>
+          <TouchableOpacity style={styles.actionButton} onPress={() => handlePostPress(item)}>
             <MessageSquare color="#374151" size={24} />
           </TouchableOpacity>
           <TouchableOpacity style={styles.actionButton}>
@@ -118,13 +130,13 @@ export default function HomeScreen() {
           </View>
         )}
         {(item.comments_count || 0) > 0 && (
-          <TouchableOpacity>
+          <TouchableOpacity onPress={() => handlePostPress(item)}>
             <Text style={styles.commentsText}>View all {item.comments_count} comments</Text>
           </TouchableOpacity>
         )}
         <Text style={styles.timeText}>{formatTimeAgo(item.created_at)} ago</Text>
       </View>
-    </View>
+    </TouchableOpacity>
   );
 
   const renderStory = ({ item }: { item: any }) => (
@@ -211,6 +223,15 @@ export default function HomeScreen() {
           </View>
         )}
       </ScrollView>
+
+      {/* Post Modal */}
+      <PostModal
+        visible={postModalVisible}
+        onClose={() => setPostModalVisible(false)}
+        post={selectedPost}
+        onLike={handleLike}
+        onDelete={user?.id === selectedPost?.user_id ? handleDeletePost : undefined}
+      />
     </SafeAreaView>
   );
 }

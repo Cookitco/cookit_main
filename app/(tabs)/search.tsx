@@ -3,7 +3,10 @@ import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, TextInput,
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Search, Utensils, Users, CheckCircle } from 'lucide-react-native';
 import { useRecipes } from '@/hooks/useRecipes';
+import { useProfile } from '@/hooks/useProfile';
+import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
+import RecipeModal from '@/components/RecipeModal';
 
 interface User {
   id: string;
@@ -12,6 +15,7 @@ interface User {
   avatar_url: string | null;
   followers_count: number | null;
   is_verified: boolean | null;
+  is_private: boolean | null;
 }
 
 const categories = ['all', 'breakfast', 'brunch', 'lunch', 'snacks', 'dinner', 'bakery', 'dessert'];
@@ -20,16 +24,27 @@ export default function SearchScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState<'recipes' | 'users'>('recipes');
   const [selectedCategory, setSelectedCategory] = useState('all');
+  const [selectedRecipe, setSelectedRecipe] = useState<any>(null);
+  const [recipeModalVisible, setRecipeModalVisible] = useState(false);
   const [users, setUsers] = useState<User[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
+  const [followingUsers, setFollowingUsers] = useState<Set<string>>(new Set());
   
-  const { recipes, loading: loadingRecipes } = useRecipes();
+  const { recipes, loading: loadingRecipes, likeRecipe, saveRecipe, deleteRecipe } = useRecipes();
+  const { followUser } = useProfile();
+  const { user } = useAuth();
 
   useEffect(() => {
     if (activeTab === 'users') {
       fetchUsers();
     }
   }, [activeTab, searchQuery]);
+
+  useEffect(() => {
+    if (user && activeTab === 'users') {
+      fetchFollowingStatus();
+    }
+  }, [user, users]);
 
   const fetchUsers = async () => {
     setLoadingUsers(true);
@@ -57,13 +72,62 @@ export default function SearchScreen() {
     }
   };
 
+  const fetchFollowingStatus = async () => {
+    if (!user) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('follows')
+        .select('following_id')
+        .eq('follower_id', user.id);
+
+      if (error) {
+        console.error('Error fetching following status:', error);
+      } else {
+        const followingSet = new Set(data.map(follow => follow.following_id));
+        setFollowingUsers(followingSet);
+      }
+    } catch (error) {
+      console.error('Error fetching following status:', error);
+    }
+  };
+
+  const handleFollowUser = async (targetUserId: string) => {
+    if (!user) return;
+
+    await followUser(targetUserId, user.id);
+    await fetchFollowingStatus();
+    await fetchUsers(); // Refresh to get updated follower counts
+  };
+
+  const handleRecipePress = (recipe: any) => {
+    setSelectedRecipe(recipe);
+    setRecipeModalVisible(true);
+  };
+
+  const handleLikeRecipe = async (recipeId: string) => {
+    if (user) {
+      await likeRecipe(recipeId, user.id);
+    }
+  };
+
+  const handleSaveRecipe = async (recipeId: string) => {
+    if (user) {
+      await saveRecipe(recipeId, user.id);
+    }
+  };
+
+  const handleDeleteRecipe = async (recipeId: string) => {
+    await deleteRecipe(recipeId);
+  };
+
   const filteredRecipes = recipes.filter(recipe =>
     recipe.name.toLowerCase().includes(searchQuery.toLowerCase()) &&
     (selectedCategory === 'all' || recipe.category === selectedCategory)
   );
 
   const renderRecipe = ({ item }: { item: any }) => (
-    <TouchableOpacity style={styles.recipeCard}>
+    <TouchableOpacity style={styles.recipeCard} onPress={() => handleRecipePress(item)}>
       <Image source={{ uri: item.image_url }} style={styles.recipeImage} />
       <View style={styles.recipeInfo}>
         <Text style={styles.recipeName} numberOfLines={1}>{item.name}</Text>
@@ -75,33 +139,52 @@ export default function SearchScreen() {
             </Text>
           </View>
         </View>
+        <View style={styles.recipeStats}>
+          <Text style={styles.recipeStatText}>❤️ {item.likes_count || 0}</Text>
+          <Text style={styles.recipeStatText}>📌 {item.saves_count || 0}</Text>
+        </View>
       </View>
     </TouchableOpacity>
   );
 
-  const renderUser = ({ item }: { item: User }) => (
-    <TouchableOpacity style={styles.userCard}>
-      <Image 
-        source={{ 
-          uri: item.avatar_url || 'https://images.pexels.com/photos/1043471/pexels-photo-1043471.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&fit=crop' 
-        }} 
-        style={styles.userAvatar} 
-      />
-      <View style={styles.userInfo}>
-        <View style={styles.userNameContainer}>
-          <Text style={styles.userUsername}>{item.username}</Text>
-          {item.is_verified && (
-            <CheckCircle color="#22c55e" size={16} fill="#22c55e" />
-          )}
+  const renderUser = ({ item }: { item: User }) => {
+    const isFollowing = followingUsers.has(item.id);
+    const isOwnProfile = user?.id === item.id;
+
+    return (
+      <TouchableOpacity style={styles.userCard}>
+        <Image 
+          source={{ 
+            uri: item.avatar_url || 'https://images.pexels.com/photos/1043471/pexels-photo-1043471.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&fit=crop' 
+          }} 
+          style={styles.userAvatar} 
+        />
+        <View style={styles.userInfo}>
+          <View style={styles.userNameContainer}>
+            <Text style={styles.userUsername}>{item.username}</Text>
+            {item.is_verified && (
+              <CheckCircle color="#22c55e" size={16} fill="#22c55e" />
+            )}
+            {item.is_private && (
+              <Text style={styles.privateBadge}>🔒</Text>
+            )}
+          </View>
+          <Text style={styles.userFullName}>{item.full_name}</Text>
+          <Text style={styles.userFollowers}>{item.followers_count || 0} followers</Text>
         </View>
-        <Text style={styles.userFullName}>{item.full_name}</Text>
-        <Text style={styles.userFollowers}>{item.followers_count || 0} followers</Text>
-      </View>
-      <TouchableOpacity style={styles.followButton}>
-        <Text style={styles.followButtonText}>Follow</Text>
+        {!isOwnProfile && (
+          <TouchableOpacity 
+            style={[styles.followButton, isFollowing && styles.followingButton]}
+            onPress={() => handleFollowUser(item.id)}
+          >
+            <Text style={[styles.followButtonText, isFollowing && styles.followingButtonText]}>
+              {isFollowing ? 'Following' : 'Follow'}
+            </Text>
+          </TouchableOpacity>
+        )}
       </TouchableOpacity>
-    </TouchableOpacity>
-  );
+    );
+  };
 
   const renderCategory = ({ item }: { item: string }) => (
     <TouchableOpacity
@@ -206,6 +289,16 @@ export default function SearchScreen() {
           </View>
         )}
       </ScrollView>
+
+      {/* Recipe Modal */}
+      <RecipeModal
+        visible={recipeModalVisible}
+        onClose={() => setRecipeModalVisible(false)}
+        recipe={selectedRecipe}
+        onLike={handleLikeRecipe}
+        onSave={handleSaveRecipe}
+        onDelete={user?.id === selectedRecipe?.user_id ? handleDeleteRecipe : undefined}
+      />
     </SafeAreaView>
   );
 }
@@ -331,6 +424,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    marginBottom: 8,
   },
   prepTime: {
     fontSize: 12,
@@ -345,6 +439,15 @@ const styles = StyleSheet.create({
   vegText: {
     fontSize: 10,
     fontFamily: 'Nunito-SemiBold',
+  },
+  recipeStats: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  recipeStatText: {
+    fontSize: 12,
+    fontFamily: 'Nunito-Regular',
+    color: '#6b7280',
   },
   usersList: {
     padding: 16,
@@ -382,6 +485,10 @@ const styles = StyleSheet.create({
     color: '#111827',
     marginRight: 4,
   },
+  privateBadge: {
+    fontSize: 12,
+    marginLeft: 4,
+  },
   userFullName: {
     fontSize: 14,
     fontFamily: 'Nunito-Regular',
@@ -399,10 +506,18 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 20,
   },
+  followingButton: {
+    backgroundColor: '#f3f4f6',
+    borderWidth: 1,
+    borderColor: '#d1d5db',
+  },
   followButtonText: {
     fontSize: 14,
     fontFamily: 'Nunito-SemiBold',
     color: 'white',
+  },
+  followingButtonText: {
+    color: '#6b7280',
   },
   emptyState: {
     alignItems: 'center',
