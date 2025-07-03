@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Modal, Pressable, Image, ScrollView, Alert } from 'react-native';
-import { X, Heart, Bookmark, Clock, Users, ChefHat, CheckCircle, Edit, Trash2 } from 'lucide-react-native';
+import { X, Heart, Bookmark, Clock, Users, ChefHat, CheckCircle, CreditCard as Edit, Trash2 } from 'lucide-react-native';
 import { useAuth } from '@/hooks/useAuth';
 import { useRecipes } from '@/hooks/useRecipes';
 import { router } from 'expo-router';
