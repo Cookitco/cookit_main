@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Image, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ArrowLeft, Camera, Save } from 'lucide-react-native';
+import { ArrowLeft, Camera, Save, Link } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { useAuth } from '@/hooks/useAuth';
 import { usePosts } from '@/hooks/usePosts';
@@ -40,6 +40,13 @@ export default function CreatePostScreen() {
     }
   };
 
+  const suggestImages = [
+    'https://images.pexels.com/photos/1640777/pexels-photo-1640777.jpeg?auto=compress&cs=tinysrgb&w=800',
+    'https://images.pexels.com/photos/1775043/pexels-photo-1775043.jpeg?auto=compress&cs=tinysrgb&w=800',
+    'https://images.pexels.com/photos/1132047/pexels-photo-1132047.jpeg?auto=compress&cs=tinysrgb&w=800',
+    'https://images.pexels.com/photos/1633578/pexels-photo-1633578.jpeg?auto=compress&cs=tinysrgb&w=800',
+  ];
+
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
@@ -63,14 +70,32 @@ export default function CreatePostScreen() {
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {/* Photo Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Photo</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Enter image URL (e.g., from Pexels)"
-            value={imageUrl}
-            onChangeText={setImageUrl}
-            placeholderTextColor="#9ca3af"
-          />
+          <Text style={styles.sectionTitle}>Photo *</Text>
+          <View style={styles.inputContainer}>
+            <Link color="#9ca3af" size={20} style={styles.inputIcon} />
+            <TextInput
+              style={styles.input}
+              placeholder="Enter image URL (e.g., from Pexels)"
+              value={imageUrl}
+              onChangeText={setImageUrl}
+              placeholderTextColor="#9ca3af"
+            />
+          </View>
+          
+          {/* Suggested Images */}
+          <Text style={styles.suggestedTitle}>Or choose from suggested images:</Text>
+          <View style={styles.suggestedImages}>
+            {suggestImages.map((url, index) => (
+              <TouchableOpacity
+                key={index}
+                style={styles.suggestedImageContainer}
+                onPress={() => setImageUrl(url)}
+              >
+                <Image source={{ uri: url }} style={styles.suggestedImage} />
+              </TouchableOpacity>
+            ))}
+          </View>
+
           {imageUrl ? (
             <Image source={{ uri: imageUrl }} style={styles.previewImage} />
           ) : (
@@ -103,6 +128,7 @@ export default function CreatePostScreen() {
           <Text style={styles.tipText}>• Write engaging captions that tell a story</Text>
           <Text style={styles.tipText}>• Share cooking tips or recipe inspiration</Text>
           <Text style={styles.tipText}>• Use relevant hashtags to reach more people</Text>
+          <Text style={styles.tipText}>• Tag ingredients or cooking techniques</Text>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -161,21 +187,57 @@ const styles = StyleSheet.create({
     color: '#111827',
     marginBottom: 12,
   },
-  input: {
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: 'white',
     borderWidth: 1,
     borderColor: '#e5e7eb',
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 12,
+    marginBottom: 12,
+  },
+  inputIcon: {
+    marginRight: 8,
+  },
+  input: {
+    flex: 1,
     fontSize: 16,
     fontFamily: 'Nunito-Regular',
     color: '#111827',
+  },
+  suggestedTitle: {
+    fontSize: 14,
+    fontFamily: 'Nunito-SemiBold',
+    color: '#374151',
     marginBottom: 12,
+  },
+  suggestedImages: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginBottom: 16,
+  },
+  suggestedImageContainer: {
+    width: '48%',
+    marginRight: '2%',
+    marginBottom: 8,
+  },
+  suggestedImage: {
+    width: '100%',
+    height: 80,
+    borderRadius: 8,
   },
   textArea: {
     height: 120,
     textAlignVertical: 'top',
+    backgroundColor: 'white',
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    marginBottom: 8,
   },
   previewImage: {
     width: '100%',
