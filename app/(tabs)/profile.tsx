@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, FlatList, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Settings, Grid2x2 as Grid, BookOpen, Heart, MoreHorizontal, CreditCard as Edit, CheckCircle, LogOut } from 'lucide-react-native';
+import { Settings, Grid2x2 as Grid, BookOpen, Heart, MoreHorizontal, Edit, CheckCircle, LogOut, Play } from 'lucide-react-native';
 import { useAuth } from '@/hooks/useAuth';
 import { useProfile } from '@/hooks/useProfile';
 import { useRecipes } from '@/hooks/useRecipes';
@@ -34,6 +34,11 @@ export default function ProfileScreen() {
   const renderPost = ({ item }: { item: any }) => (
     <TouchableOpacity style={styles.postItem}>
       <Image source={{ uri: item.media_url }} style={styles.postImage} />
+      {(item.type === 'video' || item.type === 'short') && (
+        <View style={styles.postPlayOverlay}>
+          <Play color="white" size={16} fill="white" />
+        </View>
+      )}
     </TouchableOpacity>
   );
 
@@ -45,6 +50,14 @@ export default function ProfileScreen() {
         <View style={styles.recipeStats}>
           <Text style={styles.recipeStatText}>❤️ {item.likes_count || 0}</Text>
           <Text style={styles.recipeStatText}>📌 {item.saves_count || 0}</Text>
+        </View>
+        <View style={styles.recipeMeta}>
+          <Text style={styles.recipeCategory}>{item.category}</Text>
+          <View style={[styles.vegBadge, { backgroundColor: item.is_veg ? '#dcfce7' : '#fef2f2' }]}>
+            <Text style={[styles.vegText, { color: item.is_veg ? '#16a34a' : '#dc2626' }]}>
+              {item.is_veg ? 'Veg' : 'Non-Veg'}
+            </Text>
+          </View>
         </View>
       </View>
     </TouchableOpacity>
@@ -104,6 +117,9 @@ export default function ProfileScreen() {
               <Text style={styles.fullName}>{profile?.full_name || 'User'}</Text>
               {profile?.is_verified && (
                 <CheckCircle color="#22c55e" size={16} fill="#22c55e" />
+              )}
+              {profile?.is_private && (
+                <Text style={styles.privateBadge}>🔒</Text>
               )}
             </View>
             <Text style={styles.bio}>{profile?.bio || 'Welcome to CooKit!'}</Text>
@@ -271,6 +287,10 @@ const styles = StyleSheet.create({
     color: '#111827',
     marginRight: 4,
   },
+  privateBadge: {
+    fontSize: 14,
+    marginLeft: 4,
+  },
   bio: {
     fontSize: 14,
     fontFamily: 'Nunito-Regular',
@@ -328,11 +348,20 @@ const styles = StyleSheet.create({
     width: '32%',
     aspectRatio: 1,
     marginBottom: 4,
+    position: 'relative',
   },
   postImage: {
     width: '100%',
     height: '100%',
     borderRadius: 8,
+  },
+  postPlayOverlay: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    borderRadius: 12,
+    padding: 4,
   },
   recipeRow: {
     justifyContent: 'space-between',
@@ -365,11 +394,32 @@ const styles = StyleSheet.create({
   recipeStats: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    marginBottom: 8,
   },
   recipeStatText: {
     fontSize: 12,
     fontFamily: 'Nunito-Regular',
     color: '#6b7280',
+  },
+  recipeMeta: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  recipeCategory: {
+    fontSize: 12,
+    fontFamily: 'Nunito-Regular',
+    color: '#9ca3af',
+    textTransform: 'capitalize',
+  },
+  vegBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 8,
+  },
+  vegText: {
+    fontSize: 10,
+    fontFamily: 'Nunito-SemiBold',
   },
   emptyState: {
     alignItems: 'center',

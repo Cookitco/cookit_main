@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, FlatList, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { MessageCircle, Heart, MessageSquare, Send, Bookmark, MoreHorizontal, CheckCircle } from 'lucide-react-native';
+import { MessageCircle, Heart, MessageSquare, Send, Bookmark, MoreHorizontal, CheckCircle, Play } from 'lucide-react-native';
 import { usePosts } from '@/hooks/usePosts';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -39,6 +39,14 @@ export default function HomeScreen() {
     }
   };
 
+  const filteredPosts = posts.filter(post => {
+    if (activeTab === 'posts') {
+      return post.type === 'image';
+    } else {
+      return post.type === 'video' || post.type === 'short';
+    }
+  });
+
   const renderPost = ({ item }: { item: any }) => (
     <View style={styles.postContainer}>
       {/* Post Header */}
@@ -55,6 +63,9 @@ export default function HomeScreen() {
                 <CheckCircle color="#22c55e" size={16} fill="#22c55e" />
               )}
             </View>
+            {item.recipes && (
+              <Text style={styles.recipeInfo}>Recipe: {item.recipes.name}</Text>
+            )}
           </View>
         </View>
         <TouchableOpacity>
@@ -62,8 +73,22 @@ export default function HomeScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Post Image */}
-      <Image source={{ uri: item.media_url }} style={styles.postImage} />
+      {/* Post Media */}
+      <View style={styles.mediaContainer}>
+        <Image source={{ uri: item.media_url }} style={styles.postImage} />
+        {(item.type === 'video' || item.type === 'short') && (
+          <View style={styles.playOverlay}>
+            <View style={styles.playButton}>
+              <Play color="white" size={24} fill="white" />
+            </View>
+            {item.duration && (
+              <View style={styles.durationBadge}>
+                <Text style={styles.durationText}>{item.duration}</Text>
+              </View>
+            )}
+          </View>
+        )}
+      </View>
 
       {/* Post Actions */}
       <View style={styles.postActions}>
@@ -168,16 +193,21 @@ export default function HomeScreen() {
         </View>
 
         {/* Posts */}
-        {posts.length > 0 ? (
+        {filteredPosts.length > 0 ? (
           <FlatList
-            data={posts}
+            data={filteredPosts}
             renderItem={renderPost}
             keyExtractor={(item) => item.id}
             scrollEnabled={false}
           />
         ) : (
           <View style={styles.emptyState}>
-            <Text style={styles.emptyStateText}>No posts yet. Create your first post!</Text>
+            <Text style={styles.emptyStateText}>
+              {activeTab === 'posts' 
+                ? 'No posts yet. Create your first post!' 
+                : 'No videos yet. Upload your first video!'
+              }
+            </Text>
           </View>
         )}
       </ScrollView>
@@ -323,9 +353,49 @@ const styles = StyleSheet.create({
     color: '#111827',
     marginRight: 4,
   },
+  recipeInfo: {
+    fontSize: 12,
+    fontFamily: 'Nunito-Regular',
+    color: '#6b7280',
+    marginTop: 2,
+  },
+  mediaContainer: {
+    position: 'relative',
+  },
   postImage: {
     width: '100%',
     height: 320,
+  },
+  playOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  playButton: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  durationBadge: {
+    position: 'absolute',
+    bottom: 8,
+    right: 8,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
+  },
+  durationText: {
+    color: 'white',
+    fontSize: 12,
+    fontFamily: 'Nunito-SemiBold',
   },
   postActions: {
     flexDirection: 'row',

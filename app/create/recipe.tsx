@@ -15,7 +15,10 @@ export default function CreateRecipeScreen() {
   const [ingredients, setIngredients] = useState(['']);
   const [directions, setDirections] = useState(['']);
   const [prepTime, setPrepTime] = useState('');
+  const [cookTime, setCookTime] = useState('');
+  const [servings, setServings] = useState('');
   const [calories, setCalories] = useState('');
+  const [difficulty, setDifficulty] = useState('medium');
   const [isVeg, setIsVeg] = useState(true);
   const [category, setCategory] = useState('dinner');
   const [isPrivate, setIsPrivate] = useState(false);
@@ -23,6 +26,7 @@ export default function CreateRecipeScreen() {
   const [loading, setLoading] = useState(false);
 
   const categories = ['breakfast', 'brunch', 'lunch', 'snacks', 'dinner', 'bakery', 'dessert'];
+  const difficulties = ['easy', 'medium', 'hard'];
 
   const addIngredient = () => {
     setIngredients([...ingredients, '']);
@@ -80,7 +84,10 @@ export default function CreateRecipeScreen() {
       ingredients: filteredIngredients,
       directions: filteredDirections,
       prep_time: prepTime,
+      cook_time: cookTime || null,
+      servings: servings ? parseInt(servings) : null,
       calories: calories ? parseInt(calories) : null,
+      difficulty,
       is_veg: isVeg,
       category,
       is_private: isPrivate,
@@ -120,7 +127,7 @@ export default function CreateRecipeScreen() {
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {/* Photo URL */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Recipe Photo URL</Text>
+          <Text style={styles.sectionTitle}>Recipe Photo URL *</Text>
           <TextInput
             style={styles.input}
             placeholder="Enter image URL (e.g., from Pexels)"
@@ -143,14 +150,14 @@ export default function CreateRecipeScreen() {
           <Text style={styles.sectionTitle}>Basic Information</Text>
           <TextInput
             style={styles.input}
-            placeholder="Recipe Name"
+            placeholder="Recipe Name *"
             value={recipeName}
             onChangeText={setRecipeName}
             placeholderTextColor="#9ca3af"
           />
           <TextInput
             style={[styles.input, styles.textArea]}
-            placeholder="Description"
+            placeholder="Description *"
             value={description}
             onChangeText={setDescription}
             multiline
@@ -165,9 +172,27 @@ export default function CreateRecipeScreen() {
           <View style={styles.row}>
             <TextInput
               style={[styles.input, styles.halfInput]}
-              placeholder="Prep Time (e.g., 30 min)"
+              placeholder="Prep Time (e.g., 30 min) *"
               value={prepTime}
               onChangeText={setPrepTime}
+              placeholderTextColor="#9ca3af"
+            />
+            <TextInput
+              style={[styles.input, styles.halfInput]}
+              placeholder="Cook Time (optional)"
+              value={cookTime}
+              onChangeText={setCookTime}
+              placeholderTextColor="#9ca3af"
+            />
+          </View>
+          
+          <View style={styles.row}>
+            <TextInput
+              style={[styles.input, styles.halfInput]}
+              placeholder="Servings"
+              value={servings}
+              onChangeText={setServings}
+              keyboardType="numeric"
               placeholderTextColor="#9ca3af"
             />
             <TextInput
@@ -180,47 +205,65 @@ export default function CreateRecipeScreen() {
             />
           </View>
           
-          <View style={styles.row}>
-            <View style={styles.halfInput}>
-              <Text style={styles.label}>Type</Text>
-              <View style={styles.segmentedControl}>
+          {/* Difficulty */}
+          <View style={styles.optionGroup}>
+            <Text style={styles.label}>Difficulty</Text>
+            <View style={styles.segmentedControl}>
+              {difficulties.map((diff) => (
                 <TouchableOpacity
-                  style={[styles.segment, isVeg && styles.activeSegment]}
-                  onPress={() => setIsVeg(true)}
+                  key={diff}
+                  style={[styles.segment, difficulty === diff && styles.activeSegment]}
+                  onPress={() => setDifficulty(diff)}
                 >
-                  <Text style={[styles.segmentText, isVeg && styles.activeSegmentText]}>
-                    Vegetarian
+                  <Text style={[styles.segmentText, difficulty === diff && styles.activeSegmentText]}>
+                    {diff.charAt(0).toUpperCase() + diff.slice(1)}
                   </Text>
                 </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.segment, !isVeg && styles.activeSegment]}
-                  onPress={() => setIsVeg(false)}
-                >
-                  <Text style={[styles.segmentText, !isVeg && styles.activeSegmentText]}>
-                    Non-Veg
-                  </Text>
-                </TouchableOpacity>
-              </View>
+              ))}
             </View>
+          </View>
+
+          {/* Type */}
+          <View style={styles.optionGroup}>
+            <Text style={styles.label}>Type</Text>
+            <View style={styles.segmentedControl}>
+              <TouchableOpacity
+                style={[styles.segment, isVeg && styles.activeSegment]}
+                onPress={() => setIsVeg(true)}
+              >
+                <Text style={[styles.segmentText, isVeg && styles.activeSegmentText]}>
+                  Vegetarian
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.segment, !isVeg && styles.activeSegment]}
+                onPress={() => setIsVeg(false)}
+              >
+                <Text style={[styles.segmentText, !isVeg && styles.activeSegmentText]}>
+                  Non-Veg
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
             
-            <View style={styles.halfInput}>
-              <Text style={styles.label}>Category</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                <View style={styles.categoryContainer}>
-                  {categories.map((cat) => (
-                    <TouchableOpacity
-                      key={cat}
-                      style={[styles.categoryButton, category === cat && styles.activeCategoryButton]}
-                      onPress={() => setCategory(cat)}
-                    >
-                      <Text style={[styles.categoryButtonText, category === cat && styles.activeCategoryButtonText]}>
-                        {cat.charAt(0).toUpperCase() + cat.slice(1)}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </ScrollView>
-            </View>
+          {/* Category */}
+          <View style={styles.optionGroup}>
+            <Text style={styles.label}>Category</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              <View style={styles.categoryContainer}>
+                {categories.map((cat) => (
+                  <TouchableOpacity
+                    key={cat}
+                    style={[styles.categoryButton, category === cat && styles.activeCategoryButton]}
+                    onPress={() => setCategory(cat)}
+                  >
+                    <Text style={[styles.categoryButtonText, category === cat && styles.activeCategoryButtonText]}>
+                      {cat.charAt(0).toUpperCase() + cat.slice(1)}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </ScrollView>
           </View>
         </View>
 
@@ -420,6 +463,9 @@ const styles = StyleSheet.create({
   },
   halfInput: {
     width: '48%',
+  },
+  optionGroup: {
+    marginBottom: 16,
   },
   label: {
     fontSize: 14,

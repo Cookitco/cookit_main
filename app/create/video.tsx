@@ -25,11 +25,15 @@ export default function CreateVideoScreen() {
 
     setLoading(true);
 
+    const caption = `${title}${description ? `\n\n${description}` : ''}`;
+
     const { error } = await createPost({
       user_id: user.id,
       type: 'video',
       media_url: videoUrl,
-      caption: `${title}\n\n${description}`,
+      thumbnail_url: thumbnailUrl || null,
+      caption: caption,
+      duration: duration || null,
     });
 
     setLoading(false);
@@ -66,7 +70,7 @@ export default function CreateVideoScreen() {
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {/* Video Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Video URL</Text>
+          <Text style={styles.sectionTitle}>Video URL *</Text>
           <TextInput
             style={styles.input}
             placeholder="Enter video URL"
@@ -136,6 +140,7 @@ export default function CreateVideoScreen() {
           <Text style={styles.guidelineText}>• Show step-by-step cooking process</Text>
           <Text style={styles.guidelineText}>• Include ingredient list in description</Text>
           <Text style={styles.guidelineText}>• Add cooking tips and tricks</Text>
+          <Text style={styles.guidelineText}>• Use engaging thumbnails to attract viewers</Text>
         </View>
       </ScrollView>
     </SafeAreaView>

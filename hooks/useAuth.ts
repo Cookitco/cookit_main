@@ -19,7 +19,7 @@ export function useAuth() {
     // Listen for auth changes
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = supabase.auth.onAuthStateChange(async (_event, session) => {
       console.log('Auth state changed:', _event, session);
       setSession(session);
       setUser(session?.user ?? null);
@@ -40,7 +40,6 @@ export function useAuth() {
       console.log('Sign in result:', { data, error });
       
       if (error) {
-        // More specific error handling
         if (error.message.includes('Invalid login credentials')) {
           return { data, error: { message: 'Invalid email or password. Please check your credentials.' } };
         } else if (error.message.includes('Email not confirmed')) {
@@ -62,7 +61,21 @@ export function useAuth() {
     try {
       console.log('Attempting sign up with:', email, username);
       
-      // Sign up the user with email confirmation disabled
+      // Check if username already exists
+      const { data: existingProfile } = await supabase
+        .from('profiles')
+        .select('username')
+        .eq('username', username.trim())
+        .single();
+
+      if (existingProfile) {
+        return { 
+          data: null, 
+          error: { message: `Username "${username}" is already taken. Please choose a different username.` } 
+        };
+      }
+
+      // Sign up the user
       const { data, error } = await supabase.auth.signUp({
         email: email.trim().toLowerCase(),
         password,
@@ -78,7 +91,6 @@ export function useAuth() {
       console.log('Sign up result:', { data, error });
 
       if (error) {
-        // Handle specific signup errors
         if (error.message.includes('User already registered')) {
           return { 
             data, 
@@ -113,24 +125,21 @@ export function useAuth() {
               id: data.user.id,
               username: username.trim(),
               full_name: fullName.trim(),
-              bio: 'Welcome to CooKit!',
+              bio: 'Welcome to CooKit! 🍳',
+              is_private: false,
             });
 
           if (profileError) {
             console.error('Error creating profile:', profileError);
-            // If username already exists, suggest a different one
             if (profileError.message.includes('duplicate') || profileError.message.includes('unique')) {
               return { 
                 data: null, 
                 error: { message: `Username "${username}" is already taken. Please choose a different username.` } 
               };
             }
-            // Don't fail the entire signup for profile creation errors
-            console.warn('Profile creation failed but signup succeeded');
           }
         } catch (profileError) {
           console.error('Profile creation error:', profileError);
-          // Don't fail the entire signup for profile creation errors
         }
       }
 

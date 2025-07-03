@@ -12,6 +12,7 @@ export interface Database {
           following_count: number | null;
           posts_count: number | null;
           is_verified: boolean | null;
+          is_private: boolean | null;
           created_at: string | null;
           updated_at: string | null;
         };
@@ -25,6 +26,7 @@ export interface Database {
           following_count?: number | null;
           posts_count?: number | null;
           is_verified?: boolean | null;
+          is_private?: boolean | null;
           created_at?: string | null;
           updated_at?: string | null;
         };
@@ -38,6 +40,7 @@ export interface Database {
           following_count?: number | null;
           posts_count?: number | null;
           is_verified?: boolean | null;
+          is_private?: boolean | null;
           created_at?: string | null;
           updated_at?: string | null;
         };
@@ -52,7 +55,10 @@ export interface Database {
           ingredients: string[];
           directions: string[];
           prep_time: string;
+          cook_time: string | null;
+          servings: number | null;
           calories: number | null;
+          difficulty: string | null;
           is_veg: boolean | null;
           category: string;
           is_private: boolean | null;
@@ -70,7 +76,10 @@ export interface Database {
           ingredients: string[];
           directions: string[];
           prep_time: string;
+          cook_time?: string | null;
+          servings?: number | null;
           calories?: number | null;
+          difficulty?: string | null;
           is_veg?: boolean | null;
           category: string;
           is_private?: boolean | null;
@@ -88,7 +97,10 @@ export interface Database {
           ingredients?: string[];
           directions?: string[];
           prep_time?: string;
+          cook_time?: string | null;
+          servings?: number | null;
           calories?: number | null;
+          difficulty?: string | null;
           is_veg?: boolean | null;
           category?: string;
           is_private?: boolean | null;
@@ -104,10 +116,13 @@ export interface Database {
           user_id: string;
           type: string;
           media_url: string;
+          thumbnail_url: string | null;
           caption: string | null;
           recipe_id: string | null;
+          duration: string | null;
           likes_count: number | null;
           comments_count: number | null;
+          views_count: number | null;
           created_at: string | null;
           updated_at: string | null;
         };
@@ -116,10 +131,13 @@ export interface Database {
           user_id: string;
           type: string;
           media_url: string;
+          thumbnail_url?: string | null;
           caption?: string | null;
           recipe_id?: string | null;
+          duration?: string | null;
           likes_count?: number | null;
           comments_count?: number | null;
+          views_count?: number | null;
           created_at?: string | null;
           updated_at?: string | null;
         };
@@ -128,10 +146,13 @@ export interface Database {
           user_id?: string;
           type?: string;
           media_url?: string;
+          thumbnail_url?: string | null;
           caption?: string | null;
           recipe_id?: string | null;
+          duration?: string | null;
           likes_count?: number | null;
           comments_count?: number | null;
+          views_count?: number | null;
           created_at?: string | null;
           updated_at?: string | null;
         };

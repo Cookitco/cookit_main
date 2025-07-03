@@ -7,7 +7,12 @@ type Post = Database['public']['Tables']['posts']['Row'] & {
     username: string;
     avatar_url: string | null;
     is_verified: boolean | null;
+    is_private: boolean | null;
   };
+  recipes?: {
+    name: string;
+    category: string;
+  } | null;
 };
 type PostInsert = Database['public']['Tables']['posts']['Insert'];
 
@@ -30,23 +35,33 @@ export function usePosts(userId?: string) {
           profiles (
             username,
             avatar_url,
-            is_verified
+            is_verified,
+            is_private
+          ),
+          recipes (
+            name,
+            category
           )
         `)
         .order('created_at', { ascending: false });
 
       if (userId) {
         query = query.eq('user_id', userId);
+      } else {
+        // Only show posts from public profiles for general feed
+        query = query.eq('profiles.is_private', false);
       }
 
       const { data, error } = await query;
 
       if (error) {
+        console.error('Error fetching posts:', error);
         setError(error.message);
       } else {
         setPosts(data || []);
       }
     } catch (err) {
+      console.error('Error fetching posts:', err);
       setError('Failed to fetch posts');
     } finally {
       setLoading(false);
@@ -63,12 +78,18 @@ export function usePosts(userId?: string) {
           profiles (
             username,
             avatar_url,
-            is_verified
+            is_verified,
+            is_private
+          ),
+          recipes (
+            name,
+            category
           )
         `)
         .single();
 
       if (error) {
+        console.error('Error creating post:', error);
         setError(error.message);
         return { error };
       } else {
@@ -76,6 +97,7 @@ export function usePosts(userId?: string) {
         return { data };
       }
     } catch (err) {
+      console.error('Error creating post:', err);
       setError('Failed to create post');
       return { error: 'Failed to create post' };
     }
@@ -100,6 +122,7 @@ export function usePosts(userId?: string) {
           .eq('user_id', userId);
 
         if (error) {
+          console.error('Error unliking post:', error);
           setError(error.message);
           return { error };
         }
@@ -113,6 +136,7 @@ export function usePosts(userId?: string) {
           });
 
         if (error) {
+          console.error('Error liking post:', error);
           setError(error.message);
           return { error };
         }
@@ -122,8 +146,31 @@ export function usePosts(userId?: string) {
       await fetchPosts();
       return { success: true };
     } catch (err) {
+      console.error('Error toggling like:', err);
       setError('Failed to toggle like');
       return { error: 'Failed to toggle like' };
+    }
+  };
+
+  const deletePost = async (postId: string) => {
+    try {
+      const { error } = await supabase
+        .from('posts')
+        .delete()
+        .eq('id', postId);
+
+      if (error) {
+        console.error('Error deleting post:', error);
+        setError(error.message);
+        return { error };
+      } else {
+        setPosts(prev => prev.filter(post => post.id !== postId));
+        return { success: true };
+      }
+    } catch (err) {
+      console.error('Error deleting post:', err);
+      setError('Failed to delete post');
+      return { error: 'Failed to delete post' };
     }
   };
 
@@ -133,6 +180,7 @@ export function usePosts(userId?: string) {
     error,
     createPost,
     likePost,
+    deletePost,
     refetch: fetchPosts,
   };
 }
